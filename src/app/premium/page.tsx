@@ -68,7 +68,7 @@ export default function PremiumPage() {
         <div className="text-sm text-white/70">Premium plan</div>
 
         <div className="mt-2 text-3xl font-semibold tracking-tight">
-          €4,99
+          €3,99
           <span className="ml-1 text-base font-medium text-white/70">/ maand</span>
         </div>
 
