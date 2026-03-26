@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [premiumUntil, setPremiumUntil] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -32,9 +33,20 @@ export default function SettingsPage() {
 
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("is_premium, plan")
+          .select("is_premium, plan, premium_until")
           .eq("id", user.id)
           .single();
+          {premiumUntil && (
+  <div className="mt-2 text-xs text-yellow-700">
+    Premium actief tot{" "}
+    {new Date(premiumUntil).toLocaleDateString("nl-NL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })}
+  </div>
+)}
+          
 
         if (profileError) {
           throw profileError;
