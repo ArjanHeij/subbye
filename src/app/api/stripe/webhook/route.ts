@@ -18,12 +18,8 @@ export async function POST(req: Request) {
       return new Response("STRIPE_WEBHOOK_SECRET ontbreekt", { status: 500 });
     }
 
-    if (!supabaseUrl) {
-      return new Response("NEXT_PUBLIC_SUPABASE_URL ontbreekt", { status: 500 });
-    }
-
-    if (!supabaseServiceRoleKey) {
-      return new Response("SUPABASE_SERVICE_ROLE_KEY ontbreekt", { status: 500 });
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      return new Response("Supabase env vars ontbreken", { status: 500 });
     }
 
     const stripe = new Stripe(stripeSecretKey);
@@ -42,33 +38,27 @@ export async function POST(req: Request) {
       webhookSecret
     );
 
+    // Premium activeren na succesvolle checkout
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      const email = session.customer_details?.email ?? null;
+      const userId = session.metadata?.supabase_user_id ?? null;
       const customerId =
         typeof session.customer === "string" ? session.customer : null;
 
-      if (email) {
-        const { data: profile, error: profileError } = await supabase
+      if (userId) {
+        await supabase
           .from("profiles")
-          .select("id")
-          .eq("email", email)
-          .single();
-
-        if (!profileError && profile?.id) {
-          await supabase
-            .from("profiles")
-            .update({
-              is_premium: true,
-              plan: "premium",
-              stripe_customer_id: customerId,
-            })
-            .eq("id", profile.id);
-        }
+          .update({
+            is_premium: true,
+            plan: "premium",
+            stripe_customer_id: customerId,
+          })
+          .eq("id", userId);
       }
     }
 
+    // Premium uitzetten als abonnement echt stopt
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId =

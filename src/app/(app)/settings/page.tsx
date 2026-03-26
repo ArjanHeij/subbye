@@ -10,6 +10,7 @@ export default function SettingsPage() {
 
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
@@ -39,10 +40,9 @@ export default function SettingsPage() {
           throw profileError;
         }
 
-        const premium =
-          Boolean(profile?.is_premium) || profile?.plan === "premium";
-
-        setIsPremium(premium);
+        setIsPremium(
+          Boolean(profile?.is_premium) || profile?.plan === "premium"
+        );
       } catch (err: any) {
         setError(err?.message ?? "Settings laden mislukt");
       } finally {
@@ -56,6 +56,46 @@ export default function SettingsPage() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
+  }
+
+  async function openPortal() {
+    try {
+      setPortalLoading(true);
+      setError("");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Geen actieve sessie gevonden");
+      }
+
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ accessToken }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error ?? "Portal openen mislukt");
+      }
+
+      if (!data?.url) {
+        throw new Error("Geen portal URL ontvangen");
+      }
+
+      window.location.href = data.url;
+    } catch (err: any) {
+      setError(err?.message ?? "Portal openen mislukt");
+      setPortalLoading(false);
+    }
   }
 
   if (loading) {
@@ -138,7 +178,24 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {!isPremium && (
+        {isPremium ? (
+          <div className="mt-4 rounded-2xl bg-gray-50 p-4">
+            <div className="text-sm font-medium text-gray-900">
+              Premium beheren
+            </div>
+            <div className="mt-1 text-sm text-gray-500">
+              Werk je betaalmethode bij of zeg je abonnement op via Stripe.
+            </div>
+
+            <button
+              onClick={openPortal}
+              disabled={portalLoading}
+              className="mt-4 inline-block rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 disabled:opacity-60"
+            >
+              {portalLoading ? "Openen..." : "Beheer abonnement"}
+            </button>
+          </div>
+        ) : (
           <div className="mt-4 rounded-2xl bg-gray-50 p-4">
             <div className="text-sm font-medium text-gray-900">
               Ontgrendel Premium
