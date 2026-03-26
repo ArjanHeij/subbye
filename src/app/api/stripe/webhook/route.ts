@@ -38,7 +38,6 @@ export async function POST(req: Request) {
       webhookSecret
     );
 
-    // Premium activeren na succesvolle checkout
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
@@ -46,32 +45,59 @@ export async function POST(req: Request) {
       const customerId =
         typeof session.customer === "string" ? session.customer : null;
 
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : null;
+
+      let premiumUntil: string | null = null;
+
+      if (subscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+        premiumUntil = new Date(
+          subscription.current_period_end * 1000
+        ).toISOString();
+      }
+
       if (userId) {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({
             is_premium: true,
             plan: "premium",
             stripe_customer_id: customerId,
+            premium_until: premiumUntil,
           })
           .eq("id", userId);
+
+        if (error) {
+          return new Response(error.message, { status: 500 });
+        }
       }
     }
 
-    // Premium uitzetten als abonnement echt stopt
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
+
       const customerId =
-        typeof subscription.customer === "string" ? subscription.customer : null;
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : null;
 
       if (customerId) {
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({
             is_premium: false,
             plan: "free",
+            premium_until: null,
           })
           .eq("stripe_customer_id", customerId);
+
+        if (error) {
+          return new Response(error.message, { status: 500 });
+        }
       }
     }
 
