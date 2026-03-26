@@ -179,23 +179,31 @@ export default function SettingsPage() {
         </div>
 
         {isPremium ? (
-          <div className="mt-4 rounded-2xl bg-gray-50 p-4">
-            <div className="text-sm font-medium text-gray-900">
-              Premium beheren
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              Werk je betaalmethode bij of zeg je abonnement op via Stripe.
-            </div>
+  <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+    <div className="flex items-center gap-2">
+      <span className="text-lg">⭐</span>
+      <div className="text-sm font-semibold text-yellow-900">
+        Premium actief
+      </div>
+    </div>
 
-            <button
-              onClick={openPortal}
-              disabled={portalLoading}
-              className="mt-4 inline-block rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 disabled:opacity-60"
-            >
-              {portalLoading ? "Openen..." : "Beheer abonnement"}
-            </button>
-          </div>
-        ) : (
+    <div className="mt-2 text-sm text-yellow-800">
+      Je hebt volledige toegang tot alle functies van SubBye.
+    </div>
+
+    <div className="mt-2 text-xs text-yellow-700">
+      Je abonnement wordt beheerd via Stripe. Je kunt daar je betaling aanpassen of opzeggen.
+    </div>
+
+    <button
+      onClick={openPortal}
+      disabled={portalLoading}
+      className="mt-4 inline-block rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+    >
+      {portalLoading ? "Openen..." : "Beheer abonnement"}
+    </button>
+  </div>
+) : (
           <div className="mt-4 rounded-2xl bg-gray-50 p-4">
             <div className="text-sm font-medium text-gray-900">
               Ontgrendel Premium
