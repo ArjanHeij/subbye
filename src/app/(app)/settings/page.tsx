@@ -179,31 +179,32 @@ export default function SettingsPage() {
         </div>
 
         {isPremium ? (
-  <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
-    <div className="flex items-center gap-2">
-      <span className="text-lg">⭐</span>
-      <div className="text-sm font-semibold text-yellow-900">
-        Premium actief
-      </div>
-    </div>
+          <div className="mt-4 rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⭐</span>
+              <div className="text-sm font-semibold text-yellow-900">
+                Premium actief
+              </div>
+            </div>
 
-    <div className="mt-2 text-sm text-yellow-800">
-      Je hebt volledige toegang tot alle functies van SubBye.
-    </div>
+            <div className="mt-2 text-sm text-yellow-800">
+              Je hebt volledige toegang tot alle functies van SubBye.
+            </div>
 
-    <div className="mt-2 text-xs text-yellow-700">
-      Je abonnement wordt beheerd via Stripe. Je kunt daar je betaling aanpassen of opzeggen.
-    </div>
+            <div className="mt-2 text-xs text-yellow-700">
+              Je abonnement wordt beheerd via Stripe. Je kunt daar je
+              betaalmethode aanpassen of opzeggen.
+            </div>
 
-    <button
-      onClick={openPortal}
-      disabled={portalLoading}
-      className="mt-4 inline-block rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
-    >
-      {portalLoading ? "Openen..." : "Beheer abonnement"}
-    </button>
-  </div>
-) : (
+            <button
+              onClick={openPortal}
+              disabled={portalLoading}
+              className="mt-4 inline-block rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+            >
+              {portalLoading ? "Openen..." : "Beheer abonnement"}
+            </button>
+          </div>
+        ) : (
           <div className="mt-4 rounded-2xl bg-gray-50 p-4">
             <div className="text-sm font-medium text-gray-900">
               Ontgrendel Premium
@@ -257,9 +258,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-4 rounded-3xl border border-red-200 bg-white p-5 shadow-sm">
-        <div className="text-sm font-semibold text-gray-900">
-          Gevaarzone
-        </div>
+        <div className="text-sm font-semibold text-gray-900">Gevaarzone</div>
 
         <div className="mt-1 text-sm text-gray-500">
           Log uit op dit apparaat.
