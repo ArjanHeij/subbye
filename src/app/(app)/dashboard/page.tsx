@@ -695,11 +695,11 @@ export default function DashboardPage() {
                   </Link>
 
                   <Link
-                    href={`/edit/${item.id}`}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-blue-600"
-                  >
-                    ✏ Edit
-                  </Link>
+  href={`/edit/${item.id}`}
+  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-blue-600"
+>
+  ✏ Edit
+</Link>
 
                   <button
                     onClick={() => deleteSubscription(item.id)}
