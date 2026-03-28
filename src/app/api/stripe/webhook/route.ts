@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-export const runtime = "nodejs";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE_KEY as string
+);
 
 type StripeSubscriptionWithPeriod = Stripe.Subscription & {
   current_period_end?: number | null;
@@ -66,16 +66,20 @@ export async function POST(req: NextRequest) {
         const customerEmail =
           session.customer_details?.email ?? session.customer_email ?? null;
 
-        if (!customerId && !customerEmail) break;
+        if (!customerId && !customerEmail) {
+          break;
+        }
 
-        const profileQuery = supabase
+        const profileBaseQuery = supabase
           .from("profiles")
           .select("id, email, stripe_customer_id")
           .limit(1);
 
         const { data: profile, error: profileError } = customerId
-          ? await profileQuery.eq("stripe_customer_id", customerId).maybeSingle()
-          : await profileQuery.eq("email", customerEmail).maybeSingle();
+          ? await profileBaseQuery
+              .eq("stripe_customer_id", customerId)
+              .maybeSingle()
+          : await profileBaseQuery.eq("email", customerEmail).maybeSingle();
 
         if (profileError) {
           throw new Error(`Profile lookup failed: ${profileError.message}`);
@@ -104,6 +108,7 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as StripeSubscriptionWithPeriod;
 
         const customerId = getStripeCustomerId(subscription.customer);
+
         if (!customerId) {
           throw new Error("Subscription has no customer id");
         }
@@ -150,6 +155,7 @@ export async function POST(req: NextRequest) {
         const subscription = event.data.object as StripeSubscriptionWithPeriod;
 
         const customerId = getStripeCustomerId(subscription.customer);
+
         if (!customerId) {
           throw new Error("Subscription has no customer id");
         }
