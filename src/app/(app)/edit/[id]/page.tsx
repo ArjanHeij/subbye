@@ -20,7 +20,6 @@ export default function EditSubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [debug, setDebug] = useState<Record<string, any>>({});
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -33,21 +32,11 @@ export default function EditSubscriptionPage() {
         setLoading(true);
         setError("");
 
-        const nextDebug: Record<string, any> = {
-          routeParamId: id,
-        };
-
         if (!id) {
-          nextDebug.step = "missing-id";
-          setDebug(nextDebug);
           throw new Error("Geen geldig abonnement ID in de URL");
         }
 
         const sub = await getSubscriptionById(id);
-
-        nextDebug.step = "subscription-loaded";
-        nextDebug.subscription = sub;
-        setDebug(nextDebug);
 
         setName(sub.name ?? "");
         setPrice(
@@ -58,11 +47,6 @@ export default function EditSubscriptionPage() {
         setBillingCycle(sub.billing_cycle ?? "monthly");
         setCategory(sub.category ?? "Other");
       } catch (err: any) {
-        setDebug((prev) => ({
-          ...prev,
-          step: "load-error",
-          message: err?.message ?? "Onbekende fout",
-        }));
         setError(err?.message ?? "Abonnement laden mislukt");
       } finally {
         setLoading(false);
@@ -102,10 +86,6 @@ export default function EditSubscriptionPage() {
 
       router.replace("/dashboard");
     } catch (err: any) {
-      setDebug((prev) => ({
-        ...prev,
-        saveError: err?.message ?? "Onbekende fout",
-      }));
       setError(err?.message ?? "Opslaan mislukt");
     } finally {
       setSaving(false);
@@ -121,19 +101,6 @@ export default function EditSubscriptionPage() {
       <p className="mt-1 text-sm text-gray-500">
         Pas je abonnement aan en sla je wijzigingen op
       </p>
-
-      <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
-        <div><strong>ID uit URL:</strong> {id || "(leeg)"}</div>
-        <div><strong>Name state:</strong> {name || "(leeg)"}</div>
-        <div><strong>Price state:</strong> {price || "(leeg)"}</div>
-        <div><strong>Loading:</strong> {loading ? "ja" : "nee"}</div>
-      </div>
-
-      {Object.keys(debug).length > 0 && (
-        <pre className="mt-4 overflow-auto rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900">
-          {JSON.stringify(debug, null, 2)}
-        </pre>
-      )}
 
       {error && (
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -174,7 +141,9 @@ export default function EditSubscriptionPage() {
           </div>
 
           <div className="mt-4">
-            <label className="text-sm font-medium text-gray-900">Frequentie</label>
+            <label className="text-sm font-medium text-gray-900">
+              Frequentie
+            </label>
             <select
               value={billingCycle}
               onChange={(e) => setBillingCycle(e.target.value as BillingCycle)}
@@ -186,7 +155,9 @@ export default function EditSubscriptionPage() {
           </div>
 
           <div className="mt-4">
-            <label className="text-sm font-medium text-gray-900">Categorie</label>
+            <label className="text-sm font-medium text-gray-900">
+              Categorie
+            </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
