@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
-import { getLogo } from "@/lib/getLogo";
 import { supabase } from "@/lib/supabaseClient";
+import LogoImage from "@/components/LogoImage";
 
 type Subscription = {
   id: string;
@@ -387,8 +387,8 @@ export default function DashboardPage() {
                   className="flex items-center justify-between rounded-2xl bg-white px-3 py-3 shadow-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <img
-                      src={getLogo(item.name)}
+                    <LogoImage
+                      name={item.name}
                       className="h-8 w-8 rounded-lg"
                       alt={item.name}
                     />
@@ -572,8 +572,8 @@ export default function DashboardPage() {
                   {index + 1}
                 </div>
 
-                <img
-                  src={getLogo(item.name)}
+                <LogoImage
+                  name={item.name}
                   className="h-8 w-8 rounded-md"
                   alt={item.name}
                 />
@@ -673,8 +673,8 @@ export default function DashboardPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={getLogo(item.name)}
+                    <LogoImage
+                      name={item.name}
                       className="h-10 w-10 rounded-xl"
                       alt={item.name}
                     />
