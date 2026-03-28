@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { subscriptionCatalog } from "@/lib/subscriptionCatalog";
-import { getLogo } from "@/lib/getLogo";
+import LogoImage from "@/components/LogoImage";
 
 type Suggestion = {
   name: string;
@@ -23,33 +23,29 @@ export default function AddSubscriptionPage() {
   const [error, setError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [subscriptionCount, setSubscriptionCount] = useState(0);
+
   const FREE_LIMIT = 5;
 
   useEffect(() => {
     async function loadPlanAndCount() {
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        const user = userData.user;
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) return;
 
-        if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_premium")
+        .eq("id", user.id)
+        .single();
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_premium")
-          .eq("id", user.id)
-          .single();
+      setIsPremium(Boolean(profile?.is_premium));
 
-        setIsPremium(Boolean(profile?.is_premium));
+      const { count } = await supabase
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
 
-        const { count } = await supabase
-          .from("subscriptions")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-
-        setSubscriptionCount(count ?? 0);
-      } catch (err: any) {
-        setError(err?.message ?? "Kon plan niet laden");
-      }
+      setSubscriptionCount(count ?? 0);
     }
 
     loadPlanAndCount();
@@ -58,40 +54,16 @@ export default function AddSubscriptionPage() {
   function detectCategory(serviceName: string) {
     const n = serviceName.toLowerCase();
 
-    if (
-      n.includes("netflix") ||
-      n.includes("disney") ||
-      n.includes("hbo") ||
-      n.includes("youtube") ||
-      n.includes("amazon prime")
-    ) {
+    if (n.includes("netflix") || n.includes("disney") || n.includes("hbo") || n.includes("youtube"))
       return "Streaming";
-    }
 
-    if (
-      n.includes("spotify") ||
-      n.includes("apple music") ||
-      n.includes("audible")
-    ) {
+    if (n.includes("spotify") || n.includes("apple music"))
       return "Music";
-    }
 
-    if (n.includes("basic-fit") || n.includes("peloton")) {
-      return "Fitness";
-    }
+    if (n.includes("basic-fit")) return "Fitness";
 
-    if (
-      n.includes("adobe") ||
-      n.includes("notion") ||
-      n.includes("dropbox") ||
-      n.includes("microsoft") ||
-      n.includes("google one") ||
-      n.includes("canva") ||
-      n.includes("chatgpt") ||
-      n.includes("midjourney")
-    ) {
+    if (n.includes("adobe") || n.includes("notion") || n.includes("chatgpt"))
       return "Software";
-    }
 
     return "Other";
   }
@@ -121,10 +93,7 @@ export default function AddSubscriptionPage() {
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-
-      if (!user) {
-        throw new Error("Niet ingelogd");
-      }
+      if (!user) throw new Error("Niet ingelogd");
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -139,31 +108,23 @@ export default function AddSubscriptionPage() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      const currentCount = count ?? 0;
-
-      if (!premium && currentCount >= FREE_LIMIT) {
-        throw new Error(
-          `Free gebruikers kunnen maximaal ${FREE_LIMIT} abonnementen toevoegen. Upgrade naar Premium voor onbeperkt.`
-        );
+      if (!premium && (count ?? 0) >= FREE_LIMIT) {
+        throw new Error(`Max ${FREE_LIMIT} abonnementen op Free plan`);
       }
 
       const { error } = await supabase.from("subscriptions").insert({
-  user_id: user.id,
-  name,
-  price: Number(price),
-  billing_cycle: billingCycle,
-  category,
-});
+        user_id: user.id,
+        name,
+        price: Number(price),
+        billing_cycle: billingCycle,
+        category,
+      });
 
-if (error) throw error;
+      if (error) throw error;
 
-// AI inzichten automatisch vernieuwen
-await fetch("/api/ai/insights", {
-  method: "POST",
-});
+      await fetch("/api/ai/insights", { method: "POST" });
 
-router.push("/dashboard");
-router.refresh();
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err?.message ?? "Opslaan mislukt");
       setLoading(false);
@@ -173,61 +134,34 @@ router.refresh();
   const remaining = Math.max(FREE_LIMIT - subscriptionCount, 0);
 
   return (
-    <main className="mx-auto max-w-md p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Nieuw abonnement</h1>
-          <p className="mt-1 text-gray-500">Voeg een abonnement toe</p>
-        </div>
-
-        {isPremium ? (
-          <div className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-semibold">
-            ⭐ Premium
-          </div>
-        ) : (
-          <div className="rounded-full bg-black px-3 py-1 text-xs text-white">
-            Free
-          </div>
-        )}
-      </div>
+    <main className="mx-auto max-w-md p-4 pb-24">
+      <h1 className="text-2xl font-semibold">Nieuw abonnement</h1>
 
       {!isPremium && (
         <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
           <div className="text-sm font-semibold text-blue-700">
-            Free plan
+            {subscriptionCount}/{FREE_LIMIT} gebruikt
           </div>
-          <div className="mt-1 text-sm text-blue-600">
-            Je gebruikt {subscriptionCount}/{FREE_LIMIT} abonnementen.
+          <div className="text-xs text-blue-600">
+            Nog {remaining} beschikbaar
           </div>
-          <div className="mt-1 text-xs text-blue-600">
-            Nog {remaining} over. Upgrade naar Premium voor onbeperkt.
-          </div>
-
-          <button
-            onClick={() => router.push("/premium")}
-            className="mt-3 rounded-xl bg-black px-4 py-2 text-sm text-white"
-            type="button"
-          >
-            Upgrade naar Premium
-          </button>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        {/* NAME */}
         <div>
           <label className="text-sm font-medium">Naam</label>
 
           <input
-            type="text"
-            placeholder="Bijv. Netflix"
             value={name}
             onChange={(e) => searchSubscriptions(e.target.value)}
-            className="mt-1 w-full rounded-xl border p-3"
-            required
+            className="mt-2 w-full rounded-2xl border px-4 py-3"
+            placeholder="Netflix, Spotify..."
           />
 
           {suggestions.length > 0 && (
-            <div className="mt-2 rounded-xl border bg-white">
+            <div className="mt-2 rounded-2xl border bg-white shadow-sm">
               {suggestions.map((sub) => (
                 <div
                   key={sub.name}
@@ -237,57 +171,58 @@ router.refresh();
                     setCategory(detectCategory(sub.name));
                     setSuggestions([]);
                   }}
-                  className="flex cursor-pointer items-center gap-3 p-3 hover:bg-gray-50"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
                 >
-                  <img
-                    src={getLogo(sub.name)}
-                    className="h-6 w-6"
-                    alt={sub.name}
+                  <LogoImage
+                    name={sub.name}
+                    className="h-7 w-7 rounded-md"
                   />
 
-                  <div className="flex-1 text-sm">{sub.name}</div>
+                  <div className="flex-1 text-sm font-medium">
+                    {sub.name}
+                  </div>
 
-                  <div className="text-xs text-gray-500">€{sub.price}</div>
+                  <div className="text-xs text-gray-500">
+                    €{sub.price}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* PRICE */}
         <div>
           <label className="text-sm font-medium">Prijs</label>
-
           <input
             type="number"
             step="0.01"
-            placeholder="12.99"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 w-full rounded-xl border p-3"
-            required
+            className="mt-2 w-full rounded-2xl border px-4 py-3"
           />
         </div>
 
+        {/* BILLING */}
         <div>
           <label className="text-sm font-medium">Frequentie</label>
-
           <select
             value={billingCycle}
             onChange={(e) => setBillingCycle(e.target.value)}
-            className="mt-1 w-full rounded-xl border p-3"
+            className="mt-2 w-full rounded-2xl border px-4 py-3"
           >
             <option value="monthly">Maandelijks</option>
             <option value="yearly">Jaarlijks</option>
           </select>
         </div>
 
+        {/* CATEGORY */}
         <div>
           <label className="text-sm font-medium">Categorie</label>
-
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 w-full rounded-xl border p-3"
+            className="mt-2 w-full rounded-2xl border px-4 py-3"
           >
             <option value="Streaming">Streaming</option>
             <option value="Music">Music</option>
@@ -298,17 +233,16 @@ router.refresh();
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          <div className="rounded-2xl bg-red-50 p-3 text-sm text-red-600">
             {error}
           </div>
         )}
 
         <button
-          type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-black p-3 text-white disabled:opacity-60"
+          className="w-full rounded-2xl bg-black py-3 text-white"
         >
-          {loading ? "Opslaan..." : "Abonnement toevoegen"}
+          {loading ? "Opslaan..." : "Toevoegen"}
         </button>
       </form>
     </main>

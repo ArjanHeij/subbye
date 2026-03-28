@@ -24,6 +24,14 @@ export function getLocalLogo(name: string) {
   if (n.includes("apple")) return "/logos/apple.png";
   if (n.includes("adobe")) return "/logos/adobe.png";
   if (n.includes("notion")) return "/logos/notion.png";
+  if (n.includes("canva")) return "/logos/canva.png";
+  if (n.includes("dropbox")) return "/logos/dropbox.png";
+  if (n.includes("google")) return "/logos/google.png";
+  if (n.includes("microsoft")) return "/logos/microsoft.png";
+  if (n.includes("soundcloud")) return "/logos/soundcloud.png";
+  if (n.includes("steam")) return "/logos/steam.png";
+  if (n.includes("xbox")) return "/logos/xbox.png";
+  if (n.includes("playstation")) return "/logos/playstation.png";
 
   return null;
 }
@@ -36,6 +44,10 @@ export function getLogoDevUrl(domain: string) {
   return `https://img.logo.dev/${domain}?token=${token}&size=128&format=png`;
 }
 
+/**
+ * Compatibility helper voor oudere delen van de app
+ * die nog getLogo(name) gebruiken.
+ */
 export function getLogo(name: string) {
   return getLocalLogo(name) ?? "/logos/default.png";
 }
