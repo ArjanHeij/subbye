@@ -1,108 +1,190 @@
+import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2025-02-24.acacia",
+});
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+function getWebhookSecret() {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error("Missing STRIPE_WEBHOOK_SECRET");
+  }
+  return secret;
+}
+
+function getStripeCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null {
+  if (!customer) return null;
+  if (typeof customer === "string") return customer;
+  return customer.id ?? null;
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!stripeSecretKey) {
-      return new Response("STRIPE_SECRET_KEY ontbreekt", { status: 500 });
-    }
-
-    if (!webhookSecret) {
-      return new Response("STRIPE_WEBHOOK_SECRET ontbreekt", { status: 500 });
-    }
-
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      return new Response("Supabase env vars ontbreken", { status: 500 });
-    }
-
-    const stripe = new Stripe(stripeSecretKey);
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
     if (!signature) {
-      return new Response("Missing stripe-signature header", { status: 400 });
+      return NextResponse.json(
+        { error: "Missing Stripe signature" },
+        { status: 400 }
+      );
     }
 
-    const event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret
-    );
+    const webhookSecret = getWebhookSecret();
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
+    let event: Stripe.Event;
 
-      const userId = session.metadata?.supabase_user_id ?? null;
-      const customerId =
-        typeof session.customer === "string" ? session.customer : null;
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch (err: any) {
+      return NextResponse.json(
+        { error: `Webhook signature verification failed: ${err.message}` },
+        { status: 400 }
+      );
+    }
 
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : null;
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
 
-      let premiumUntil: string | null = null;
+        const customerId = getStripeCustomerId(session.customer);
+        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
 
-      if (subscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-        premiumUntil = new Date(
-          subscription.current_period_end * 1000
-        ).toISOString();
-      }
-
-      if (userId) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            is_premium: true,
-            plan: "premium",
-            stripe_customer_id: customerId,
-            premium_until: premiumUntil,
-          })
-          .eq("id", userId);
-
-        if (error) {
-          return new Response(error.message, { status: 500 });
+        if (!customerId && !customerEmail) {
+          break;
         }
-      }
-    }
 
-    if (event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object as Stripe.Subscription;
-
-      const customerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : null;
-
-      if (customerId) {
-        const { error } = await supabase
+        const profileQuery = supabase
           .from("profiles")
-          .update({
-            is_premium: false,
-            plan: "free",
-            premium_until: null,
-          })
-          .eq("stripe_customer_id", customerId);
+          .select("id, email, stripe_customer_id")
+          .limit(1);
 
-        if (error) {
-          return new Response(error.message, { status: 500 });
+        const { data: profile, error: profileError } = customerId
+          ? await profileQuery.eq("stripe_customer_id", customerId).maybeSingle()
+          : await profileQuery.eq("email", customerEmail).maybeSingle();
+
+        if (profileError) {
+          throw new Error(`Profile lookup failed: ${profileError.message}`);
         }
+
+        if (profile) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+              stripe_customer_id: customerId ?? profile.stripe_customer_id,
+              is_premium: true,
+              plan: "premium",
+            })
+            .eq("id", profile.id);
+
+          if (updateError) {
+            throw new Error(`Profile update failed: ${updateError.message}`);
+          }
+        }
+
+        break;
       }
+
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        const customerId = getStripeCustomerId(subscription.customer);
+
+        if (!customerId) {
+          throw new Error("Subscription has no customer id");
+        }
+
+        const premiumUntil =
+          subscription.current_period_end != null
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null;
+
+        const isActive =
+          subscription.status === "active" ||
+          subscription.status === "trialing" ||
+          subscription.status === "past_due";
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (profileError) {
+          throw new Error(`Profile lookup failed: ${profileError.message}`);
+        }
+
+        if (profile) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+              is_premium: isActive,
+              plan: isActive ? "premium" : "free",
+              premium_until: premiumUntil,
+            })
+            .eq("id", profile.id);
+
+          if (updateError) {
+            throw new Error(`Profile update failed: ${updateError.message}`);
+          }
+        }
+
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+
+        const customerId = getStripeCustomerId(subscription.customer);
+
+        if (!customerId) {
+          throw new Error("Subscription has no customer id");
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (profileError) {
+          throw new Error(`Profile lookup failed: ${profileError.message}`);
+        }
+
+        if (profile) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({
+              is_premium: false,
+              plan: "free",
+              premium_until: null,
+            })
+            .eq("id", profile.id);
+
+          if (updateError) {
+            throw new Error(`Profile update failed: ${updateError.message}`);
+          }
+        }
+
+        break;
+      }
+
+      default:
+        break;
     }
 
-    return new Response("ok", { status: 200 });
+    return NextResponse.json({ received: true });
   } catch (err: any) {
-    return new Response(err?.message ?? "Webhook fout", { status: 400 });
+    console.error("Stripe webhook error:", err);
+
+    return NextResponse.json(
+      { error: err?.message ?? "Webhook handler failed" },
+      { status: 500 }
+    );
   }
 }
