@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabase } from "@/lib/supabaseClient";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2026-02-25.clover",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 export const runtime = "nodejs";
+
+type StripeSubscriptionWithPeriod = Stripe.Subscription & {
+  current_period_end?: number | null;
+};
 
 function getWebhookSecret() {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -16,7 +18,9 @@ function getWebhookSecret() {
   return secret;
 }
 
-function getStripeCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null {
+function getStripeCustomerId(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null
+): string | null {
   if (!customer) return null;
   if (typeof customer === "string") return customer;
   return customer.id ?? null;
@@ -34,12 +38,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const webhookSecret = getWebhookSecret();
-
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        getWebhookSecret()
+      );
     } catch (err: any) {
       return NextResponse.json(
         { error: `Webhook signature verification failed: ${err.message}` },
@@ -52,11 +58,10 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
 
         const customerId = getStripeCustomerId(session.customer);
-        const customerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+        const customerEmail =
+          session.customer_details?.email ?? session.customer_email ?? null;
 
-        if (!customerId && !customerEmail) {
-          break;
-        }
+        if (!customerId && !customerEmail) break;
 
         const profileQuery = supabase
           .from("profiles")
@@ -91,10 +96,9 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object as StripeSubscriptionWithPeriod;
 
         const customerId = getStripeCustomerId(subscription.customer);
-
         if (!customerId) {
           throw new Error("Subscription has no customer id");
         }
@@ -138,10 +142,9 @@ export async function POST(req: NextRequest) {
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object as StripeSubscriptionWithPeriod;
 
         const customerId = getStripeCustomerId(subscription.customer);
-
         if (!customerId) {
           throw new Error("Subscription has no customer id");
         }
