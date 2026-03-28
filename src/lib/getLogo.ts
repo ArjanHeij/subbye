@@ -35,3 +35,7 @@ export function getLogoDevUrl(domain: string) {
 
   return `https://img.logo.dev/${domain}?token=${token}&size=128&format=png`;
 }
+
+export function getLogo(name: string) {
+  return getLocalLogo(name) ?? "/logos/default.png";
+}
