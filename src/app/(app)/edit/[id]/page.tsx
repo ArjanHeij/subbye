@@ -16,11 +16,18 @@ type Subscription = {
 export default function EditSubscriptionPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params?.id as string;
+
+  const id =
+    typeof params?.id === "string"
+      ? params.id
+      : Array.isArray(params?.id)
+      ? params.id[0]
+      : "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [debug, setDebug] = useState<Record<string, any>>({});
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -31,21 +38,37 @@ export default function EditSubscriptionPage() {
 
   useEffect(() => {
     async function loadSubscription() {
+      setLoading(true);
+      setError("");
+
       try {
-        setLoading(true);
-        setError("");
+        const nextDebug: Record<string, any> = {
+          params,
+          extractedId: id,
+        };
+
+        if (!id) {
+          nextDebug.step = "no-id";
+          setDebug(nextDebug);
+          throw new Error("Geen geldig abonnement ID in de URL");
+        }
 
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (userError || !user) {
-          throw new Error("Niet ingelogd");
+        nextDebug.user = user ?? null;
+        nextDebug.userError = userError?.message ?? null;
+
+        if (userError) {
+          setDebug(nextDebug);
+          throw new Error(`Auth fout: ${userError.message}`);
         }
 
-        if (!id) {
-          throw new Error("Geen abonnement ID gevonden");
+        if (!user) {
+          setDebug(nextDebug);
+          throw new Error("Niet ingelogd");
         }
 
         const { data, error: subError } = await supabase
@@ -53,20 +76,21 @@ export default function EditSubscriptionPage() {
           .select("id, user_id, name, price, billing_cycle, category")
           .eq("id", id)
           .eq("user_id", user.id)
-          .maybeSingle();
+          .single();
+
+        nextDebug.queryResult = data ?? null;
+        nextDebug.queryError = subError?.message ?? null;
+
+        setDebug(nextDebug);
 
         if (subError) {
           throw new Error(`Supabase fout: ${subError.message}`);
         }
 
-        if (!data) {
-          throw new Error(`Geen abonnement gevonden voor id: ${id}`);
-        }
-
         const sub = data as Subscription;
 
         setName(sub.name ?? "");
-        setPrice(String(sub.price ?? ""));
+        setPrice(sub.price != null ? String(sub.price) : "");
         setBillingCycle(sub.billing_cycle ?? "monthly");
         setCategory(sub.category ?? "Other");
       } catch (err: any) {
@@ -77,7 +101,7 @@ export default function EditSubscriptionPage() {
     }
 
     loadSubscription();
-  }, [id]);
+  }, [id, params]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -86,16 +110,24 @@ export default function EditSubscriptionPage() {
       setSaving(true);
       setError("");
 
+      if (!id) {
+        throw new Error("Geen geldig abonnement ID");
+      }
+
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (userError) {
+        throw new Error(`Auth fout: ${userError.message}`);
+      }
+
+      if (!user) {
         throw new Error("Niet ingelogd");
       }
 
-      const parsedPrice = Number(price);
+      const parsedPrice = Number(price.replace(",", "."));
 
       if (!name.trim()) {
         throw new Error("Naam is verplicht");
@@ -105,7 +137,7 @@ export default function EditSubscriptionPage() {
         throw new Error("Voer een geldige prijs in");
       }
 
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from("subscriptions")
         .update({
           name: name.trim(),
@@ -114,27 +146,23 @@ export default function EditSubscriptionPage() {
           category,
         })
         .eq("id", id)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select();
 
       if (updateError) {
         throw new Error(updateError.message);
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      if (!data || data.length === 0) {
+        throw new Error("Geen abonnement bijgewerkt");
+      }
+
+      router.replace("/dashboard");
     } catch (err: any) {
       setError(err?.message ?? "Opslaan mislukt");
     } finally {
       setSaving(false);
     }
-  }
-
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-md p-4">
-        <p>Loading...</p>
-      </main>
-    );
   }
 
   return (
@@ -147,86 +175,104 @@ export default function EditSubscriptionPage() {
         Pas je abonnement aan en sla je wijzigingen op
       </p>
 
+      <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+        <div><strong>URL id:</strong> {id || "(leeg)"}</div>
+        <div><strong>Name state:</strong> {name || "(leeg)"}</div>
+        <div><strong>Price state:</strong> {price || "(leeg)"}</div>
+      </div>
+
+      {Object.keys(debug).length > 0 && (
+        <pre className="mt-4 overflow-auto rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900">
+          {JSON.stringify(debug, null, 2)}
+        </pre>
+      )}
+
       {error && (
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <form
-        onSubmit={handleSave}
-        className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
-      >
-        <div>
-          <label className="text-sm font-medium text-gray-900">Naam</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
-            placeholder="Bijv. Netflix"
-          />
+      {loading ? (
+        <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-600">Abonnement laden...</p>
         </div>
+      ) : (
+        <form
+          onSubmit={handleSave}
+          className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
+        >
+          <div>
+            <label className="text-sm font-medium text-gray-900">Naam</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
+              placeholder="Bijv. Netflix"
+            />
+          </div>
 
-        <div className="mt-4">
-          <label className="text-sm font-medium text-gray-900">Prijs</label>
-          <input
-            type="number"
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
-            placeholder="Bijv. 9.99"
-          />
-        </div>
+          <div className="mt-4">
+            <label className="text-sm font-medium text-gray-900">Prijs</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
+              placeholder="Bijv. 13,99"
+            />
+          </div>
 
-        <div className="mt-4">
-          <label className="text-sm font-medium text-gray-900">Frequentie</label>
-          <select
-            value={billingCycle}
-            onChange={(e) =>
-              setBillingCycle(e.target.value as "monthly" | "yearly")
-            }
-            className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
-          >
-            <option value="monthly">Maandelijks</option>
-            <option value="yearly">Jaarlijks</option>
-          </select>
-        </div>
+          <div className="mt-4">
+            <label className="text-sm font-medium text-gray-900">Frequentie</label>
+            <select
+              value={billingCycle}
+              onChange={(e) =>
+                setBillingCycle(e.target.value as "monthly" | "yearly")
+              }
+              className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
+            >
+              <option value="monthly">Maandelijks</option>
+              <option value="yearly">Jaarlijks</option>
+            </select>
+          </div>
 
-        <div className="mt-4">
-          <label className="text-sm font-medium text-gray-900">Categorie</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
-          >
-            <option value="Streaming">Streaming</option>
-            <option value="Music">Music</option>
-            <option value="Fitness">Fitness</option>
-            <option value="Software">Software</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
+          <div className="mt-4">
+            <label className="text-sm font-medium text-gray-900">Categorie</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-black"
+            >
+              <option value="Streaming">Streaming</option>
+              <option value="Music">Music</option>
+              <option value="Fitness">Fitness</option>
+              <option value="Software">Software</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="flex-1 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-medium text-gray-900"
-          >
-            Annuleren
-          </button>
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.replace("/dashboard")}
+              className="flex-1 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-medium text-gray-900"
+            >
+              Annuleren
+            </button>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex-1 rounded-2xl bg-black py-3 text-sm font-medium text-white shadow-sm disabled:opacity-60"
-          >
-            {saving ? "Opslaan..." : "Opslaan"}
-          </button>
-        </div>
-      </form>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-2xl bg-black py-3 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+            >
+              {saving ? "Opslaan..." : "Opslaan"}
+            </button>
+          </div>
+        </form>
+      )}
     </main>
   );
 }
