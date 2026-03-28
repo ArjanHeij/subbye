@@ -281,7 +281,9 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-md p-4">
-        <p>Loading...</p>
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-600">Dashboard laden...</p>
+        </div>
       </main>
     );
   }
@@ -289,32 +291,32 @@ export default function DashboardPage() {
   const remainingFreeSlots = Math.max(FREE_LIMIT - items.length, 0);
 
   return (
-    <main className="mx-auto max-w-md p-4 pb-28">
+    <main className="mx-auto max-w-md p-4 pb-32">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-gray-950">
-            Welkom terug
+            💸 Je geeft €{monthlyTotal.toFixed(2)} / maand uit
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Hier is je abonnementenoverzicht van vandaag
+            Dat is ongeveer €{yearlyTotal.toFixed(2)} per jaar aan abonnementen
           </p>
         </div>
 
         {isPremium ? (
-          <div className="rounded-full border border-yellow-200 bg-yellow-100 px-3 py-1.5 text-xs font-semibold text-yellow-800">
-            ⭐ Premium
+          <div className="rounded-full bg-gradient-to-r from-yellow-300 to-yellow-500 px-3 py-1.5 text-xs font-semibold text-black shadow-sm">
+            ✨ Premium
           </div>
         ) : (
           <Link
             href="/premium"
-            className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm"
+            className="rounded-full bg-black px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
           >
             Upgrade
           </Link>
         )}
       </div>
 
-      <div className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
         {isPremium ? (
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -322,7 +324,7 @@ export default function DashboardPage() {
                 Premium actief
               </div>
               <div className="mt-1 text-sm text-gray-500">
-                Je kunt onbeperkt abonnementen toevoegen en AI-inzichten gebruiken.
+                Je hebt onbeperkte abonnementen en slimme AI-inzichten.
               </div>
             </div>
 
@@ -337,16 +339,16 @@ export default function DashboardPage() {
                 Free plan
               </div>
               <div className="mt-1 text-sm text-gray-500">
-                Je gebruikt {items.length}/{FREE_LIMIT} abonnementen.
+                Je gebruikt {items.length}/{FREE_LIMIT} abonnementen
               </div>
               <div className="mt-1 text-xs text-gray-400">
-                Nog {remainingFreeSlots} plek(ken) beschikbaar.
+                Nog {remainingFreeSlots} plek(ken) beschikbaar
               </div>
             </div>
 
             <Link
               href="/premium"
-              className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+              className="rounded-2xl bg-black px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
             >
               Upgrade
             </Link>
@@ -355,13 +357,13 @@ export default function DashboardPage() {
       </div>
 
       {items.length > 0 && (
-        <div className="mt-4 rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm">
+        <div className="mt-4 rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm transition-all duration-200 hover:shadow-md">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold text-green-900">
                 💸 Mogelijke besparing
               </h2>
-              <div className="mt-2 text-3xl font-bold tracking-tight text-green-700">
+              <div className="mt-2 text-4xl font-bold tracking-tight text-green-700">
                 €{potentialSavingsMonthly.toFixed(2)}
                 <span className="ml-1 text-base font-medium text-green-700">
                   / maand
@@ -372,7 +374,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-green-700">
+            <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-green-700 shadow-sm">
               Grootste impact
             </div>
           </div>
@@ -382,12 +384,12 @@ export default function DashboardPage() {
               {savingsCandidates.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded-2xl bg-white px-3 py-3"
+                  className="flex items-center justify-between rounded-2xl bg-white px-3 py-3 shadow-sm"
                 >
                   <div className="flex items-center gap-3">
                     <img
                       src={getLogo(item.name)}
-                      className="h-7 w-7 rounded-md"
+                      className="h-8 w-8 rounded-lg"
                       alt={item.name}
                     />
                     <div>
@@ -400,8 +402,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="text-sm font-semibold text-green-700">
-                    €{Number(item.price).toFixed(2)}
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-green-700">
+                      €{Number(item.price).toFixed(2)}
+                    </div>
+                    <div className="text-[11px] text-green-600/70">
+                      {item.billing_cycle === "monthly" ? "per maand" : "per jaar"}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -411,11 +418,11 @@ export default function DashboardPage() {
       )}
 
       {(insights.length > 0 || aiInsights.length > 0) && (
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
-                💡 Bespaar inzichten
+                💡 Slimme inzichten
               </h2>
 
               {aiUpdatedAt && (
@@ -436,7 +443,7 @@ export default function DashboardPage() {
             ) : (
               <Link
                 href="/premium"
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 transition hover:bg-gray-50"
               >
                 AI = Premium
               </Link>
@@ -447,18 +454,18 @@ export default function DashboardPage() {
             {insights.map((insight, index) => (
               <div
                 key={`basic-${index}`}
-                className="rounded-2xl bg-gray-50 px-3 py-2.5"
+                className="rounded-2xl bg-gray-50 px-4 py-3 transition hover:bg-gray-100"
               >
-                • {insight}
+                💡 {insight}
               </div>
             ))}
 
             {aiInsights.map((insight, index) => (
               <div
                 key={`ai-${index}`}
-                className="rounded-2xl bg-gray-50 px-3 py-2.5"
+                className="rounded-2xl bg-gray-50 px-4 py-3 transition hover:bg-gray-100"
               >
-                • {insight}
+                ✨ {insight}
               </div>
             ))}
           </div>
@@ -472,7 +479,7 @@ export default function DashboardPage() {
       )}
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-3xl bg-black p-5 text-white shadow-sm">
+        <div className="rounded-3xl bg-black p-5 text-white shadow-sm transition-all duration-200 hover:shadow-md">
           <div className="text-xs uppercase tracking-wide text-white/70">
             Totale kosten
           </div>
@@ -486,7 +493,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm">
+        <div className="rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm transition-all duration-200 hover:shadow-md">
           <div className="text-xs uppercase tracking-wide text-green-700">
             Abonnementen
           </div>
@@ -501,7 +508,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">
@@ -531,7 +538,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div
-                  className="w-10 rounded-t-2xl bg-black"
+                  className="w-10 rounded-t-2xl bg-black transition-all duration-200"
                   style={{ height: `${item.height}px` }}
                 />
 
@@ -544,7 +551,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">
             Top 3 duurste abonnementen
@@ -559,7 +566,7 @@ export default function DashboardPage() {
             {topSubscriptions.map((item, index) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 rounded-2xl bg-gray-50 p-3"
+                className="flex items-center gap-3 rounded-2xl bg-gray-50 p-3 transition hover:bg-gray-100"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
                   {index + 1}
@@ -592,7 +599,7 @@ export default function DashboardPage() {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Link
           href="/import"
-          className="rounded-2xl border border-gray-200 bg-white p-3 text-center text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50"
+          className="rounded-2xl border border-gray-200 bg-white p-3 text-center text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 hover:shadow-md"
         >
           ⬆ CSV import
         </Link>
@@ -600,7 +607,7 @@ export default function DashboardPage() {
         <button
           onClick={scanTransactions}
           disabled={scanLoading}
-          className="rounded-2xl bg-black p-3 text-sm font-medium text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+          className="rounded-2xl bg-black p-3 text-sm font-medium text-white shadow-sm transition hover:opacity-95 hover:shadow-md disabled:opacity-60"
         >
           {scanLoading ? "Scannen..." : "🔎 Scan transacties"}
         </button>
@@ -644,14 +651,14 @@ export default function DashboardPage() {
             <div className="mt-6 flex flex-col gap-3">
               <Link
                 href="/add"
-                className="rounded-2xl bg-black py-3 text-center text-sm font-medium text-white shadow-sm"
+                className="rounded-2xl bg-black py-3 text-center text-sm font-medium text-white shadow-sm transition hover:opacity-90"
               >
                 ➕ Start met abonnement toevoegen
               </Link>
 
               <Link
                 href="/import"
-                className="rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-medium text-gray-900"
+                className="rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50"
               >
                 ⬆ Import transacties
               </Link>
@@ -662,26 +669,30 @@ export default function DashboardPage() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm"
+                className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-center gap-3">
-                  <img
-                    src={getLogo(item.name)}
-                    className="h-10 w-10 rounded-lg"
-                    alt={item.name}
-                  />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={getLogo(item.name)}
+                      className="h-10 w-10 rounded-xl"
+                      alt={item.name}
+                    />
 
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{item.name}</div>
-
-                    <div className="mt-1 text-sm text-gray-500">
-                      {item.billing_cycle === "monthly"
-                        ? `€${Number(item.price).toFixed(2)} / maand`
-                        : `€${Number(item.price).toFixed(2)} / jaar`}
+                    <div>
+                      <div className="font-medium text-gray-900">{item.name}</div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        {item.category ?? "Other"}
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="mt-2 inline-block rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-                      {item.category ?? "Other"}
+                  <div className="text-right">
+                    <div className="text-base font-semibold text-gray-900">
+                      €{Number(item.price).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {item.billing_cycle === "monthly" ? "/ maand" : "/ jaar"}
                     </div>
                   </div>
                 </div>
@@ -689,23 +700,23 @@ export default function DashboardPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     href={`/cancel/${encodeURIComponent(item.name)}`}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900"
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
                   >
                     Cancel
                   </Link>
 
                   <Link
-  href={`/edit/${item.id}`}
-  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-blue-600"
->
-  ✏ Edit
-</Link>
+                    href={`/edit/${item.id}`}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
+                  >
+                    ✏ Edit
+                  </Link>
 
                   <button
                     onClick={() => deleteSubscription(item.id)}
-                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600"
+                    className="rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
                   >
-                    ❌ Delete
+                    Verwijder
                   </button>
                 </div>
               </div>
@@ -716,9 +727,10 @@ export default function DashboardPage() {
 
       <Link
         href="/add"
-        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-black text-2xl text-white shadow-lg"
+        className="fixed bottom-6 right-6 flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-medium text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl"
       >
-        +
+        <span className="text-lg leading-none">+</span>
+        <span>Toevoegen</span>
       </Link>
     </main>
   );
