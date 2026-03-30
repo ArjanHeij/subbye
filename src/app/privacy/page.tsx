@@ -1,42 +1,93 @@
+import Link from "next/link";
+
 export default function PrivacyPage() {
   return (
-    <main style={{ maxWidth: 700, margin: "40px auto", padding: 20 }}>
-      <h1>Privacy Policy</h1>
+    <main className="min-h-screen bg-gray-50 px-4 py-10">
+      <div className="mx-auto max-w-3xl rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:p-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-sm font-medium text-gray-500">SubBye</div>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-gray-950">
+              Privacy Policy
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">
+              Last updated: 2026
+            </p>
+          </div>
 
-      <p>
-        SubBye helps you gain insight into your subscriptions and spending. We take your privacy seriously.
-      </p>
+          <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1">
+            <Link
+              href="/privacy"
+              className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white"
+            >
+              English
+            </Link>
+            <Link
+              href="/privacy/nl"
+              className="rounded-full px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-white"
+            >
+              Nederlands
+            </Link>
+          </div>
+        </div>
 
-      <h2>Data we collect</h2>
-      <ul>
-        <li>Account data (such as email)</li>
-        <li>Subscriptions you add</li>
-        <li>Transactions you import</li>
-      </ul>
+        <div className="mt-8 space-y-8 text-gray-700">
+          <section>
+            <p className="text-base leading-7">
+              SubBye helps you gain insight into your subscriptions and spending.
+              We take your privacy seriously.
+            </p>
+          </section>
 
-      <h2>How we use your data</h2>
-      <ul>
-        <li>To display your subscriptions</li>
-        <li>To generate insights and savings tips</li>
-        <li>To improve the app</li>
-      </ul>
+          <section>
+            <h2 className="text-lg font-semibold text-gray-950">
+              Data we collect
+            </h2>
+            <ul className="mt-3 list-disc space-y-2 pl-5 leading-7">
+              <li>Account data, such as your email address</li>
+              <li>Subscriptions you add to the app</li>
+              <li>Transaction data you import</li>
+            </ul>
+          </section>
 
-      <h2>AI usage</h2>
-      <p>
-        We use AI to generate insights. Your data is only used to provide personalized advice.
-      </p>
+          <section>
+            <h2 className="text-lg font-semibold text-gray-950">
+              How we use your data
+            </h2>
+            <ul className="mt-3 list-disc space-y-2 pl-5 leading-7">
+              <li>To display and manage your subscriptions</li>
+              <li>To generate insights and savings suggestions</li>
+              <li>To improve the app experience</li>
+            </ul>
+          </section>
 
-      <h2>Data sharing</h2>
-      <p>
-        We do not sell your data. We only share data with necessary services such as payment providers and AI services.
-      </p>
+          <section>
+            <h2 className="text-lg font-semibold text-gray-950">AI usage</h2>
+            <p className="mt-3 leading-7">
+              We use AI to generate insights. Your data is only used to provide
+              personalized advice and improve your experience inside the app.
+            </p>
+          </section>
 
-      <h2>Contact</h2>
-      <p>
-        Email: support@subbye.app
-      </p>
+          <section>
+            <h2 className="text-lg font-semibold text-gray-950">Data sharing</h2>
+            <p className="mt-3 leading-7">
+              We do not sell your data. We only share data with necessary service
+              providers such as payment providers, hosting providers, and AI
+              services when needed to operate the app.
+            </p>
+          </section>
 
-      <p>Last updated: 2026</p>
+          <section>
+            <h2 className="text-lg font-semibold text-gray-950">Contact</h2>
+            <p className="mt-3 leading-7">
+              Questions about this privacy policy?
+              <br />
+              Email: support@subbye.app
+            </p>
+          </section>
+        </div>
+      </div>
     </main>
   );
 }
