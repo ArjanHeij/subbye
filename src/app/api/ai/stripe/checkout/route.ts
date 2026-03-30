@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,8 @@ export async function POST() {
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     const stripePriceId = process.env.STRIPE_PRICE_ID;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!stripeSecretKey) {
       return Response.json(
@@ -29,7 +32,25 @@ export async function POST() {
       );
     }
 
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return Response.json(
+        { error: "Supabase client env vars ontbreken" },
+        { status: 500 }
+      );
+    }
+
     const stripe = new Stripe(stripeSecretKey);
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return Response.json({ error: "Niet ingelogd" }, { status: 401 });
+    }
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -39,8 +60,11 @@ export async function POST() {
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/premium/success`,
+      success_url: `${appUrl}/dashboard`,
       cancel_url: `${appUrl}/premium`,
+      metadata: {
+        supabase_user_id: user.id,
+      },
     });
 
     return Response.json({ url: checkoutSession.url });
