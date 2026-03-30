@@ -10,9 +10,7 @@ export default function PrivacyPage() {
             <h1 className="mt-1 text-3xl font-semibold tracking-tight text-gray-950">
               Privacy Policy
             </h1>
-            <p className="mt-2 text-sm text-gray-500">
-              Last updated: 2026
-            </p>
+            <p className="mt-2 text-sm text-gray-500">Last updated: 2026</p>
           </div>
 
           <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-1">
@@ -31,11 +29,20 @@ export default function PrivacyPage() {
           </div>
         </div>
 
+        <div className="mt-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-black"
+          >
+            ← Back to dashboard
+          </Link>
+        </div>
+
         <div className="mt-8 space-y-8 text-gray-700">
           <section>
             <p className="text-base leading-7">
-              SubBye helps you gain insight into your subscriptions and spending.
-              We take your privacy seriously.
+              SubBye helps you gain insight into your subscriptions and
+              spending. We take your privacy seriously.
             </p>
           </section>
 
@@ -70,11 +77,13 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-950">Data sharing</h2>
+            <h2 className="text-lg font-semibold text-gray-950">
+              Data sharing
+            </h2>
             <p className="mt-3 leading-7">
-              We do not sell your data. We only share data with necessary service
-              providers such as payment providers, hosting providers, and AI
-              services when needed to operate the app.
+              We do not sell your data. We only share data with necessary
+              service providers such as payment providers, hosting providers,
+              and AI services when needed to operate the app.
             </p>
           </section>
 

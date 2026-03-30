@@ -31,6 +31,15 @@ export default function PrivacyPageNL() {
           </div>
         </div>
 
+        <div className="mt-4">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-black"
+          >
+            ← Terug naar dashboard
+          </Link>
+        </div>
+
         <div className="mt-8 space-y-8 text-gray-700">
           <section>
             <p className="text-base leading-7">
@@ -65,8 +74,8 @@ export default function PrivacyPageNL() {
             <h2 className="text-lg font-semibold text-gray-950">AI gebruik</h2>
             <p className="mt-3 leading-7">
               We gebruiken AI om inzichten te genereren. Je data wordt alleen
-              gebruikt om persoonlijk advies te geven en je ervaring in de app te
-              verbeteren.
+              gebruikt om persoonlijk advies te geven en je ervaring in de app
+              te verbeteren.
             </p>
           </section>
 
