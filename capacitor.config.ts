@@ -6,7 +6,19 @@ const config: CapacitorConfig = {
   webDir: "public",
   server: {
     url: "https://subbye-9j2w.vercel.app",
-    cleartext: true,
+    cleartext: false,
+  },
+  plugins: {
+    StatusBar: {
+      style: "default",
+      overlaysWebView: false,
+      backgroundColor: "#ffffff",
+    },
+    SystemBars: {
+      insetsHandling: "css",
+      style: "DEFAULT",
+      hidden: false,
+    },
   },
 };
 

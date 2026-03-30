@@ -12,3 +12,23 @@ body {
   color: #111827;
   font-family: Arial, Helvetica, sans-serif;
 }
+:root {
+  --app-safe-top: var(--safe-area-inset-top, 0px);
+  --app-safe-right: var(--safe-area-inset-right, 0px);
+  --app-safe-bottom: var(--safe-area-inset-bottom, 0px);
+  --app-safe-left: var(--safe-area-inset-left, 0px);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+}
+
+body {
+  padding-top: var(--app-safe-top);
+  padding-right: var(--app-safe-right);
+  padding-bottom: var(--app-safe-bottom);
+  padding-left: var(--app-safe-left);
+}
