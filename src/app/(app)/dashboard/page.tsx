@@ -155,7 +155,7 @@ export default function DashboardPage() {
       (i) => (i.category ?? "").toLowerCase() === "streaming"
     ).length;
 
-    if (streamingCount >= 3) {
+    if (streamingCount >= 2) {
       result.push(`Je hebt ${streamingCount} streaming abonnementen tegelijk`);
     }
 
