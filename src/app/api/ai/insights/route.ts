@@ -16,10 +16,15 @@ type TransactionRow = {
   transaction_date?: string | null;
 };
 
-export async function POST() {
+function normalizeCategory(value?: string | null) {
+  return (value || "Other").trim();
+}
+
+export async function POST(req: Request) {
   try {
     const openaiKey = process.env.OPENAI_API_KEY;
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!openaiKey) {
@@ -29,35 +34,40 @@ export async function POST() {
       );
     }
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
       return Response.json(
-        { error: "Supabase server keys ontbreken" },
+        { error: "Supabase keys ontbreken" },
         { status: 500 }
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const client = new OpenAI({ apiKey: openaiKey });
+    const authHeader = req.headers.get("Authorization");
+    const token = authHeader?.replace("Bearer ", "").trim();
 
-    const {
-      data: { users },
-      error: usersError,
-    } = await supabase.auth.admin.listUsers();
-
-    if (usersError) {
-      return Response.json({ error: usersError.message }, { status: 500 });
-    }
-
-    const user = users[0];
-
-    if (!user) {
+    if (!token) {
       return Response.json(
-        { error: "Geen gebruiker gevonden" },
-        { status: 400 }
+        { error: "Geen authorisatie token ontvangen" },
+        { status: 401 }
       );
     }
 
-    const { data: subscriptions, error: subsError } = await supabase
+    const authSupabase = createClient(supabaseUrl, anonKey);
+    const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
+    const client = new OpenAI({ apiKey: openaiKey });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await authSupabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return Response.json(
+        { error: userError?.message ?? "Ongeldige gebruiker" },
+        { status: 401 }
+      );
+    }
+
+    const { data: subscriptions, error: subsError } = await adminSupabase
       .from("subscriptions")
       .select("name, price, billing_cycle, category")
       .eq("user_id", user.id);
@@ -66,7 +76,7 @@ export async function POST() {
       return Response.json({ error: subsError.message }, { status: 500 });
     }
 
-    const { data: transactions, error: txError } = await supabase
+    const { data: transactions, error: txError } = await adminSupabase
       .from("transactions")
       .select("description, amount, transaction_date")
       .eq("user_id", user.id)
@@ -81,7 +91,7 @@ export async function POST() {
     const safeTransactions = (transactions ?? []) as TransactionRow[];
 
     if (safeSubscriptions.length === 0) {
-      await supabase.from("ai_insights").upsert(
+      await adminSupabase.from("ai_insights").upsert(
         {
           user_id: user.id,
           insights: [],
@@ -105,42 +115,53 @@ export async function POST() {
 
     const categoryCounts = safeSubscriptions.reduce<Record<string, number>>(
       (acc, sub) => {
-        const key = (sub.category || "Other").trim();
+        const key = normalizeCategory(sub.category);
         acc[key] = (acc[key] ?? 0) + 1;
         return acc;
       },
       {}
     );
 
-    const sortedByPrice = [...safeSubscriptions].sort(
-      (a, b) => Number(b.price) - Number(a.price)
-    );
+    const sortedByMonthlyPrice = [...safeSubscriptions].sort((a, b) => {
+      const aMonthly =
+        a.billing_cycle === "monthly" ? Number(a.price) : Number(a.price) / 12;
+      const bMonthly =
+        b.billing_cycle === "monthly" ? Number(b.price) : Number(b.price) / 12;
+      return bMonthly - aMonthly;
+    });
 
-    const mostExpensive = sortedByPrice.slice(0, 5);
+    const mostExpensive = sortedByMonthlyPrice.slice(0, 5).map((sub) => ({
+      ...sub,
+      monthly_equivalent:
+        sub.billing_cycle === "monthly"
+          ? Number(sub.price)
+          : Number(sub.price) / 12,
+    }));
 
     const prompt = `
 Je bent een slimme Nederlandse abonnementen-assistent.
 
-Geef maximaal 5 korte, concrete bespaarinzichten in het Nederlands.
-Focus op:
-- hoge maandelijkse kosten
-- overlap tussen diensten
-- meerdere abonnementen in dezelfde categorie
-- opvallend dure abonnementen
-- mogelijke jaarlijkse besparing
-- opvallende patronen in transacties
+Gebruik UITSLUITEND de meegegeven data.
+Verzin NOOIT diensten, bedragen, categorieën of patronen die niet expliciet in de data staan.
+Noem NOOIT voorbeelden zoals Ziggo, Spotify of andere merknamen tenzij ze echt in de data voorkomen.
 
-Belangrijk:
-- geef ALLEEN JSON terug
-- geen markdown
-- geen uitleg
-- geen code fences
-- elk inzicht moet 1 korte zin zijn
+Geef maximaal 5 korte, concrete inzichten in het Nederlands.
+
+Regels:
+- Geef ALLEEN geldige JSON terug
+- Geen markdown
+- Geen uitleg
+- Geen code fences
+- Elk inzicht moet 1 korte zin zijn
+- Gebruik alleen feiten uit de data hieronder
+- Als er 2 of meer abonnementen in dezelfde categorie zitten, mag je dat benoemen
+- Als er geen overlap is, benoem dat alleen als het echt uit de data volgt
+- Gebruik maandbedragen op basis van monthly_equivalent waar relevant
 
 Gebruik exact dit format:
 {
   "insights": [
-    "Je geeft ongeveer €42 per maand uit aan streaming."
+    "Je hebt 2 streamingdiensten tegelijk."
   ]
 }
 
@@ -164,7 +185,7 @@ ${JSON.stringify(safeTransactions)}
     const completion = await client.chat.completions.create({
       model: "gpt-4.1-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
+      temperature: 0.1,
     });
 
     let text = completion.choices[0].message.content || "";
@@ -191,7 +212,7 @@ ${JSON.stringify(safeTransactions)}
           .slice(0, 5)
       : [];
 
-    await supabase.from("ai_insights").upsert(
+    await adminSupabase.from("ai_insights").upsert(
       {
         user_id: user.id,
         insights: cleanedInsights,

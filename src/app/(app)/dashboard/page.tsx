@@ -181,8 +181,19 @@ export default function DashboardPage() {
 
   async function loadSavedAiInsights() {
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Niet ingelogd");
+      }
+
       const res = await fetch("/api/ai/insights/read", {
         method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json().catch(() => null);
@@ -203,8 +214,19 @@ export default function DashboardPage() {
       setAiLoading(true);
       setError("");
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Niet ingelogd");
+      }
+
       const res = await fetch("/api/ai/insights", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json().catch(() => null);
@@ -266,9 +288,18 @@ export default function DashboardPage() {
       }
 
       if (isPremium) {
-        await fetch("/api/ai/insights", {
-          method: "POST",
-        });
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          await fetch("/api/ai/insights", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+        }
       }
 
       window.location.reload();
