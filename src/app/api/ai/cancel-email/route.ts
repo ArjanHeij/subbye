@@ -1,84 +1,100 @@
-import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
 
-    if (!stripeSecretKey) {
-      return new Response("STRIPE_SECRET_KEY ontbreekt", { status: 500 });
+    if (!openaiKey) {
+      return Response.json(
+        { error: "OPENAI_API_KEY ontbreekt" },
+        { status: 500 }
+      );
     }
 
-    if (!webhookSecret) {
-      return new Response("STRIPE_WEBHOOK_SECRET ontbreekt", { status: 500 });
+    const body = await req.json().catch(() => null);
+    const serviceName =
+      typeof body?.serviceName === "string" ? body.serviceName.trim() : "";
+
+    if (!serviceName) {
+      return Response.json(
+        { error: "Missing serviceName" },
+        { status: 400 }
+      );
     }
 
-    if (!supabaseUrl) {
-      return new Response("NEXT_PUBLIC_SUPABASE_URL ontbreekt", { status: 500 });
+    const client = new OpenAI({ apiKey: openaiKey });
+
+    const prompt = `
+Je bent een Nederlandse assistent die een korte, nette opzegmail schrijft.
+
+Schrijf een zakelijke maar vriendelijke opzegmail voor dit abonnement:
+${serviceName}
+
+Regels:
+- Schrijf in het Nederlands
+- Houd het kort en duidelijk
+- Vermeld dat de gebruiker het abonnement wil opzeggen
+- Vraag om een bevestiging van de opzegging
+- Verzin geen klantnummers of persoonlijke gegevens
+- Geef ALLEEN geldige JSON terug
+- Geen markdown
+- Geen code fences
+- Geen uitleg
+
+Gebruik exact dit format:
+{
+  "subject": "Opzegging van ${serviceName}",
+  "body": "Beste heer/mevrouw,\\n\\nHierbij wil ik mijn abonnement op ${serviceName} opzeggen. Ik ontvang graag een bevestiging van de opzegging.\\n\\nMet vriendelijke groet,"
+}
+`.trim();
+
+    const completion = await client.chat.completions.create({
+      model: "gpt-4.1-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    });
+
+    let text = completion.choices[0].message.content || "";
+    text = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+
+    let parsed: { subject?: string; body?: string };
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return Response.json(
+        { error: "AI output was geen geldige JSON", raw: text },
+        { status: 500 }
+      );
     }
 
-    if (!supabaseServiceRoleKey) {
-      return new Response("SUPABASE_SERVICE_ROLE_KEY ontbreekt", { status: 500 });
+    const subject =
+      typeof parsed.subject === "string" ? parsed.subject.trim() : "";
+    const emailBody =
+      typeof parsed.body === "string" ? parsed.body.trim() : "";
+
+    if (!subject || !emailBody) {
+      return Response.json(
+        { error: "AI output mist subject of body" },
+        { status: 500 }
+      );
     }
 
-    const stripe = new Stripe(stripeSecretKey);
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
-    const body = await req.text();
-    const signature = req.headers.get("stripe-signature");
-
-    if (!signature) {
-      return new Response("Missing stripe-signature header", { status: 400 });
-    }
-
-    const event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret
-    );
-
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-
-      const userId = session.metadata?.supabase_user_id ?? null;
-      const customerId =
-        typeof session.customer === "string" ? session.customer : null;
-
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({
-            is_premium: true,
-            plan: "premium",
-            stripe_customer_id: customerId,
-          })
-          .eq("id", userId);
-      }
-    }
-
-    if (event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof subscription.customer === "string" ? subscription.customer : null;
-
-      if (customerId) {
-        await supabase
-          .from("profiles")
-          .update({
-            is_premium: false,
-            plan: "free",
-          })
-          .eq("stripe_customer_id", customerId);
-      }
-    }
-
-    return new Response("ok", { status: 200 });
+    return Response.json({
+      success: true,
+      subject,
+      body: emailBody,
+    });
   } catch (err: any) {
-    return new Response(err?.message ?? "Webhook fout", { status: 400 });
+    return Response.json(
+      { error: err?.message ?? "Cancel email generatie mislukt" },
+      { status: 500 }
+    );
   }
 }
