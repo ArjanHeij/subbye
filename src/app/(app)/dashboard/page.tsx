@@ -130,41 +130,58 @@ export default function DashboardPage() {
       .slice(0, 2);
   }, [items]);
 
-  const insights = useMemo(() => {
+  const streamingCount = useMemo(() => {
+    return items.filter(
+      (i) => (i.category ?? "").toLowerCase() === "streaming"
+    ).length;
+  }, [items]);
+
+  const softwareCount = useMemo(() => {
+    return items.filter(
+      (i) => (i.category ?? "").toLowerCase() === "software"
+    ).length;
+  }, [items]);
+
+  const expensiveCount = useMemo(() => {
+    return items.filter((i) => {
+      const monthlyValue =
+        i.billing_cycle === "monthly"
+          ? Number(i.price)
+          : Number(i.price) / 12;
+
+      return monthlyValue > 15;
+    }).length;
+  }, [items]);
+
+  const quickInsights = useMemo(() => {
     const result: string[] = [];
 
     if (items.length === 0) return result;
 
-    const expensive = items.filter((i) => Number(i.price) > 15);
-    if (expensive.length > 0) {
-      result.push(`Je hebt ${expensive.length} dure abonnement(en) boven €15`);
-    }
-
-    const hasSpotify = items.some((i) =>
-      i.name.toLowerCase().includes("spotify")
-    );
-    const hasAppleMusic = items.some((i) =>
-      i.name.toLowerCase().includes("apple music")
-    );
-
-    if (hasSpotify && hasAppleMusic) {
-      result.push("Je hebt mogelijk dubbele muziek abonnementen");
-    }
-
-    const streamingCount = items.filter(
-      (i) => (i.category ?? "").toLowerCase() === "streaming"
-    ).length;
-
     if (streamingCount >= 2) {
-      result.push(`Je hebt ${streamingCount} streaming abonnementen tegelijk`);
+      result.push(`Je hebt ${streamingCount} streamingdiensten tegelijk`);
+    }
+
+    if (softwareCount >= 2) {
+      result.push(`Je betaalt voor ${softwareCount} software abonnementen`);
+    }
+
+    if (expensiveCount > 0) {
+      result.push(`Je hebt ${expensiveCount} abonnement(en) boven €15 per maand`);
     }
 
     if (monthlyTotal > 50) {
-      result.push(`Je geeft ongeveer €${monthlyTotal.toFixed(2)} per maand uit`);
+      result.push(`Je vaste lasten via abonnementen zijn €${monthlyTotal.toFixed(2)} per maand`);
     }
 
-    return result;
-  }, [items, monthlyTotal]);
+    if (topSubscriptions[0]) {
+      result.push(
+        `${topSubscriptions[0].name} is nu je duurste abonnement`
+      );
+    }
+
+    return result.slice(0, 4);
+  }, [items, streamingCount, softwareCount, expensiveCount, monthlyTotal, topSubscriptions]);
 
   function formatDate(dateString: string | null) {
     if (!dateString) return "";
@@ -325,10 +342,11 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-md p-4 pb-32">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-950">
-            💸 Je geeft €{monthlyTotal.toFixed(2)} / maand uit
+          <div className="text-sm font-medium text-gray-500">SubBye</div>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-gray-950">
+            Je geeft €{monthlyTotal.toFixed(2)} per maand uit
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-500">
             Dat is ongeveer €{yearlyTotal.toFixed(2)} per jaar aan abonnementen
           </p>
         </div>
@@ -347,7 +365,47 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="mt-5 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+      <div className="mt-5 rounded-[28px] bg-black p-5 text-white shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-white/60">
+              Potentiële besparing
+            </div>
+            <div className="mt-2 text-4xl font-bold tracking-tight">
+              €{potentialSavingsMonthly.toFixed(2)}
+              <span className="ml-1 text-base font-medium text-white/80">
+                / maand
+              </span>
+            </div>
+            <div className="mt-1 text-sm text-white/70">
+              ≈ €{potentialSavingsYearly.toFixed(2)} per jaar
+            </div>
+          </div>
+
+          <div className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+            Grootste kans
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            onClick={scanTransactions}
+            disabled={scanLoading}
+            className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:opacity-95 disabled:opacity-60"
+          >
+            {scanLoading ? "Bezig..." : "🔎 Vind abonnementen"}
+          </button>
+
+          <Link
+            href="/add"
+            className="rounded-2xl border border-white/15 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/5"
+          >
+            + Voeg abonnement toe
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
         {isPremium ? (
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -355,7 +413,7 @@ export default function DashboardPage() {
                 Premium actief
               </div>
               <div className="mt-1 text-sm text-gray-500">
-                Je hebt onbeperkte abonnementen en slimme AI-inzichten.
+                Onbeperkte abonnementen en AI-inzichten zonder limiet.
               </div>
             </div>
 
@@ -387,74 +445,48 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {items.length > 0 && (
-        <div className="mt-4 rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm transition-all duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-semibold text-green-900">
-                💸 Mogelijke besparing
-              </h2>
-              <div className="mt-2 text-4xl font-bold tracking-tight text-green-700">
-                €{potentialSavingsMonthly.toFixed(2)}
-                <span className="ml-1 text-base font-medium text-green-700">
-                  / maand
-                </span>
-              </div>
-              <div className="mt-1 text-sm text-green-700">
-                ≈ €{potentialSavingsYearly.toFixed(2)} per jaar
-              </div>
-            </div>
-
-            <div className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-green-700 shadow-sm">
-              Grootste impact
-            </div>
-          </div>
-
-          {savingsCandidates.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {savingsCandidates.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-2xl bg-white px-3 py-3 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <LogoImage
-                      name={item.name}
-                      className="h-8 w-8 rounded-lg"
-                      alt={item.name}
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {item.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {item.category ?? "Other"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-green-700">
-                      €{Number(item.price).toFixed(2)}
-                    </div>
-                    <div className="text-[11px] text-green-600/70">
-                      {item.billing_cycle === "monthly" ? "per maand" : "per jaar"}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {error && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {(insights.length > 0 || aiInsights.length > 0) && (
-        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+      {quickInsights.length > 0 && (
+        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">
+                💡 Direct gezien
+              </h2>
+              <p className="mt-1 text-xs text-gray-500">
+                Snel overzicht van je grootste aandachtspunten
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {quickInsights.map((insight, index) => (
+              <div
+                key={`quick-${index}`}
+                className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-700"
+              >
+                {insight}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(aiInsights.length > 0 || items.length > 0) && (
+        <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">
-                💡 Slimme inzichten
+                ✨ Slimme inzichten
               </h2>
+              <p className="mt-1 text-xs text-gray-500">
+                Door AI gegenereerde suggesties op basis van jouw data
+              </p>
 
               {aiUpdatedAt && (
                 <div className="mt-1 text-xs text-gray-500">
@@ -482,49 +514,26 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-4 space-y-2 text-sm text-gray-700">
-            {insights.map((insight, index) => (
-              <div
-                key={`basic-${index}`}
-                className="rounded-2xl bg-gray-50 px-4 py-3 transition hover:bg-gray-100"
-              >
-                💡 {insight}
+            {aiInsights.length > 0 ? (
+              aiInsights.map((insight, index) => (
+                <div
+                  key={`ai-${index}`}
+                  className="rounded-2xl bg-gray-50 px-4 py-3 transition hover:bg-gray-100"
+                >
+                  {insight}
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                Nog geen AI-inzichten beschikbaar. Klik op verversen om ze te genereren.
               </div>
-            ))}
-
-            {aiInsights.map((insight, index) => (
-              <div
-                key={`ai-${index}`}
-                className="rounded-2xl bg-gray-50 px-4 py-3 transition hover:bg-gray-100"
-              >
-                ✨ {insight}
-              </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
         </div>
       )}
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-3xl bg-black p-5 text-white shadow-sm transition-all duration-200 hover:shadow-md">
-          <div className="text-xs uppercase tracking-wide text-white/70">
-            Totale kosten
-          </div>
-
-          <div className="mt-2 text-3xl font-semibold tracking-tight">
-            €{monthlyTotal.toFixed(2)}
-          </div>
-
-          <div className="mt-1 text-sm text-white/70">
-            ≈ €{yearlyTotal.toFixed(2)} per jaar
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+        <div className="rounded-3xl border border-green-200 bg-green-50 p-5 shadow-sm">
           <div className="text-xs uppercase tracking-wide text-green-700">
             Abonnementen
           </div>
@@ -537,16 +546,30 @@ export default function DashboardPage() {
             Actieve diensten
           </div>
         </div>
+
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="text-xs uppercase tracking-wide text-gray-500">
+            Jaarlijks
+          </div>
+
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
+            €{yearlyTotal.toFixed(0)}
+          </div>
+
+          <div className="mt-1 text-sm text-gray-500">
+            Totale vaste kosten
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">
-              Monthly spending
+              Je duurste abonnementen
             </h2>
             <p className="mt-1 text-xs text-gray-500">
-              Je duurste abonnementen in beeld
+              Hier zit meestal de grootste besparing
             </p>
           </div>
 
@@ -582,12 +605,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+      <div className="mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">
-            Top 3 duurste abonnementen
+            Grootste kostenposten
           </h2>
-          <span className="text-xs text-gray-500">Meeste impact</span>
+          <span className="text-xs text-gray-500">Top 3</span>
         </div>
 
         {topSubscriptions.length === 0 ? (
@@ -632,30 +655,30 @@ export default function DashboardPage() {
           href="/import"
           className="rounded-2xl border border-gray-200 bg-white p-3 text-center text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 hover:shadow-md"
         >
-          ⬆ CSV import
+          ⬆ Importeer transacties
         </Link>
 
-        <button
-          onClick={scanTransactions}
-          disabled={scanLoading}
-          className="rounded-2xl bg-black p-3 text-sm font-medium text-white shadow-sm transition hover:opacity-95 hover:shadow-md disabled:opacity-60"
+        <Link
+          href="/add"
+          className="rounded-2xl bg-black p-3 text-center text-sm font-medium text-white shadow-sm transition hover:opacity-95 hover:shadow-md"
         >
-          {scanLoading ? "Scannen..." : "🔎 Scan transacties"}
-        </button>
+          + Bespaar geld
+        </Link>
       </div>
 
       <div className="mt-5">
         {items.length === 0 ? (
-          <div className="mt-5 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
             <div className="text-center">
-              <div className="text-4xl">🚀</div>
+              <div className="text-4xl">💸</div>
 
               <h2 className="mt-4 text-xl font-semibold text-gray-900">
-                Welkom bij SubBye
+                Stop met geld verliezen aan abonnementen
               </h2>
 
               <p className="mt-2 text-sm text-gray-500">
-                Laten we beginnen met het inzicht krijgen in je abonnementen
+                Voeg je eerste abonnement toe of scan je transacties en ontdek direct
+                hoeveel je maandelijks uitgeeft.
               </p>
             </div>
 
@@ -665,7 +688,7 @@ export default function DashboardPage() {
                   1
                 </div>
                 <div className="text-sm text-gray-700">
-                  Voeg handmatig een abonnement toe
+                  Voeg 1 abonnement toe en zie meteen je maandtotaal
                 </div>
               </div>
 
@@ -674,7 +697,7 @@ export default function DashboardPage() {
                   2
                 </div>
                 <div className="text-sm text-gray-700">
-                  Of importeer je transacties (sneller)
+                  Of laat SubBye automatisch abonnementen vinden
                 </div>
               </div>
             </div>
@@ -684,15 +707,16 @@ export default function DashboardPage() {
                 href="/add"
                 className="rounded-2xl bg-black py-3 text-center text-sm font-medium text-white shadow-sm transition hover:opacity-90"
               >
-                ➕ Start met abonnement toevoegen
+                + Voeg eerste abonnement toe
               </Link>
 
-              <Link
-                href="/import"
-                className="rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+              <button
+                onClick={scanTransactions}
+                disabled={scanLoading}
+                className="rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50 disabled:opacity-60"
               >
-                ⬆ Import transacties
-              </Link>
+                {scanLoading ? "Bezig..." : "🔎 Vind abonnementen"}
+              </button>
             </div>
           </div>
         ) : (
