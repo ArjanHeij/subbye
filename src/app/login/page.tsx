@@ -126,7 +126,7 @@ export default function LoginPage() {
   const { error } = await supabase.auth.resetPasswordForEmail(
   email.trim(),
   {
-  redirectTo: `https://subbye-92w.vercel.app/auth/callback?next=/reset-password`,
+  redirectTo: `https://subbye-9j2w.vercel.app/auth/callback?next=/reset-password`,
   }
 );
 
