@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.subbye.mobile",
+      "sha256_cert_fingerprints": [
+        "C0:21:63:27:3F:8A:2C:4E:36:D0:17:88:43:E6:BC:2F:DC:9E:EA:C0:E4:F5:10:7C:8C:C8:E6:81:F3:0A:4D:E6"
+      ]
+    }
+  }
+]

@@ -15,7 +15,6 @@ export default function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [checkingSession, setCheckingSession] = useState(true);
-  const [loadingMagic, setLoadingMagic] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [loadingSignup, setLoadingSignup] = useState(false);
   const [loadingReset, setLoadingReset] = useState(false);
@@ -65,31 +64,6 @@ export default function LoginPage() {
     setMsg(null);
   }
 
-  async function sendMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    resetFeedback();
-    setLoadingMagic(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-
-      if (error) {
-        setErr(error.message);
-      } else {
-        setMsg("Check je e-mail voor de magic link.");
-      }
-    } catch (err: any) {
-      setErr(err?.message ?? "Er ging iets mis");
-    } finally {
-      setLoadingMagic(false);
-    }
-  }
-
   async function signInWithPassword(e: React.FormEvent) {
     e.preventDefault();
     resetFeedback();
@@ -107,7 +81,7 @@ export default function LoginPage() {
         window.location.replace("/dashboard");
       }
     } catch (err: any) {
-      setErr(err?.message ?? "Login mislukt");
+      setErr(err?.message ?? "Inloggen mislukt");
     } finally {
       setLoadingPassword(false);
     }
@@ -122,18 +96,14 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
       });
 
       if (error) {
         setErr(error.message);
       } else {
-        setMsg(
-          "Account aangemaakt. Je kunt nu inloggen met je wachtwoord of je e-mail controleren als bevestiging aan staat."
-        );
+        setMsg("Account aangemaakt. Je kunt nu direct inloggen.");
         setMode("login");
+        setPassword("");
       }
     } catch (err: any) {
       setErr(err?.message ?? "Account aanmaken mislukt");
@@ -153,9 +123,12 @@ export default function LoginPage() {
     setLoadingReset(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/login`,
-      });
+  const { error } = await supabase.auth.resetPasswordForEmail(
+  email.trim(),
+  {
+  redirectTo: `https://subbye-92w.vercel.app/auth/callback?next=/reset-password`,
+  }
+);
 
       if (error) {
         setErr(error.message);
@@ -188,7 +161,7 @@ export default function LoginPage() {
 
         <p className="mt-1 text-sm text-gray-600">
           {mode === "login"
-            ? "Log in met magic link of met je e-mailadres en wachtwoord."
+            ? "Log in met je e-mailadres en wachtwoord."
             : "Maak een account aan met je e-mailadres en wachtwoord."}
         </p>
 
@@ -237,7 +210,9 @@ export default function LoginPage() {
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
               className="w-full rounded-2xl border border-gray-200 bg-white p-3 pr-24 outline-none focus:border-black"
               placeholder="Wachtwoord"
               value={password}
@@ -261,7 +236,7 @@ export default function LoginPage() {
                 disabled={loadingPassword || !email.trim() || !password.trim()}
                 className="w-full rounded-2xl bg-black p-3 text-sm font-medium text-white disabled:opacity-60"
               >
-                {loadingPassword ? "Inloggen..." : "Login met wachtwoord"}
+                {loadingPassword ? "Inloggen..." : "Inloggen"}
               </button>
             </form>
 
@@ -273,21 +248,6 @@ export default function LoginPage() {
             >
               {loadingReset ? "Bezig..." : "Wachtwoord vergeten?"}
             </button>
-
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-xs text-gray-400">OF</span>
-              <div className="h-px flex-1 bg-gray-200" />
-            </div>
-
-            <form onSubmit={sendMagicLink}>
-              <button
-                disabled={loadingMagic || !email.trim()}
-                className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm font-medium text-gray-900 disabled:opacity-60"
-              >
-                {loadingMagic ? "Versturen..." : "Magic link sturen"}
-              </button>
-            </form>
           </>
         ) : (
           <form onSubmit={signUpWithPassword} className="mt-4">
@@ -313,8 +273,8 @@ export default function LoginPage() {
         )}
 
         <p className="mt-5 text-xs leading-6 text-gray-500">
-          Zodra je bent ingelogd, onthoudt de app je sessie automatisch op je
-          telefoon totdat je uitlogt.
+          Zodra je bent ingelogd, blijft je sessie op je telefoon bewaard
+          totdat je uitlogt.
         </p>
       </div>
     </main>
