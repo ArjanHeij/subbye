@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ResetPasswordPage() {
@@ -9,11 +9,33 @@ export default function ResetPasswordPage() {
 
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    async function checkSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setErr(
+          "Open deze pagina via de wachtwoord-reset link uit je e-mail."
+        );
+      }
+
+      setCheckingSession(false);
+    }
+
+    checkSession();
+  }, []);
 
   async function updatePassword(e: React.FormEvent) {
     e.preventDefault();
+
     setErr(null);
     setMsg(null);
 
@@ -45,6 +67,7 @@ export default function ResetPasswordPage() {
       }
 
       setMsg("Je wachtwoord is aangepast. Je kunt nu inloggen.");
+
       setPassword("");
       setConfirmPassword("");
 
@@ -99,7 +122,12 @@ export default function ResetPasswordPage() {
           />
 
           <button
-            disabled={loading || !password.trim() || !confirmPassword.trim()}
+            disabled={
+              checkingSession ||
+              loading ||
+              !password.trim() ||
+              !confirmPassword.trim()
+            }
             className="w-full rounded-2xl bg-black p-3 text-sm font-medium text-white disabled:opacity-60"
           >
             {loading ? "Opslaan..." : "Wachtwoord opslaan"}

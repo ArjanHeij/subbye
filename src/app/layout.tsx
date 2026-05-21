@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import RevenueCatProvider from "@/components/RevenueCatProvider";
 
 export const metadata: Metadata = {
   title: "SubBye",
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nl">
-      <body>{children}</body>
+      <body>
+        <RevenueCatProvider>
+          {children}
+        </RevenueCatProvider>
+      </body>
     </html>
   );
 }

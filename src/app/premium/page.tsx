@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Purchases } from "@revenuecat/purchases-capacitor";
 
 export default function PremiumPage() {
   const [loading, setLoading] = useState(false);
@@ -12,23 +13,61 @@ export default function PremiumPage() {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
+      const offerings = await Purchases.getOfferings();
+      const currentOffering = offerings.current;
+
+      if (!currentOffering) {
+        throw new Error("Geen premium aanbod gevonden.");
+      }
+
+      const monthlyPackage =
+        currentOffering.monthly ?? currentOffering.availablePackages[0];
+
+      if (!monthlyPackage) {
+        throw new Error("Geen abonnement gevonden.");
+      }
+
+      const purchaseResult = await Purchases.purchasePackage({
+        aPackage: monthlyPackage,
       });
 
-      const data = await res.json().catch(() => null);
+      const isPremium =
+        purchaseResult.customerInfo.entitlements.active["premium"];
 
-      if (!res.ok) {
-        throw new Error(data?.error ?? "Checkout mislukt");
+      if (isPremium) {
+        window.location.href = "/dashboard";
+        return;
       }
 
-      if (!data?.url) {
-        throw new Error("Geen checkout URL ontvangen");
-      }
-
-      window.location.href = data.url;
+      throw new Error("Aankoop gelukt, maar Premium is nog niet actief.");
     } catch (err: any) {
-      setError(err?.message ?? "Er ging iets mis");
+      if (err?.userCancelled) {
+        setError("");
+      } else {
+        setError(err?.message ?? "Er ging iets mis met upgraden.");
+      }
+
+      setLoading(false);
+    }
+  }
+
+  async function restorePurchases() {
+    try {
+      setLoading(true);
+      setError("");
+const restoreResult = await Purchases.restorePurchases();
+
+const isPremium =
+  restoreResult.customerInfo.entitlements.active["premium"];
+
+      if (isPremium) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      throw new Error("Geen actieve Premium aankoop gevonden.");
+    } catch (err: any) {
+      setError(err?.message ?? "Herstellen mislukt.");
       setLoading(false);
     }
   }
@@ -40,7 +79,8 @@ export default function PremiumPage() {
       </h1>
 
       <p className="mt-2 text-sm text-gray-500">
-        Ontgrendel alle slimme functies van SubBye en krijg meer grip op je abonnementen.
+        Ontgrendel alle slimme functies van SubBye en krijg meer grip op je
+        abonnementen.
       </p>
 
       <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -69,11 +109,13 @@ export default function PremiumPage() {
 
         <div className="mt-2 text-3xl font-semibold tracking-tight">
           €3,99
-          <span className="ml-1 text-base font-medium text-white/70">/ maand</span>
+          <span className="ml-1 text-base font-medium text-white/70">
+            / maand
+          </span>
         </div>
 
         <div className="mt-2 text-sm text-white/70">
-          Elke maand opzegbaar
+          Betaling veilig via Google Play. Elke maand opzegbaar.
         </div>
 
         {error && (
@@ -87,7 +129,15 @@ export default function PremiumPage() {
           disabled={loading}
           className="mt-5 w-full rounded-2xl bg-white py-3 text-sm font-medium text-black shadow-sm disabled:opacity-60"
         >
-          {loading ? "Doorsturen..." : "Upgrade nu"}
+          {loading ? "Openen..." : "Upgrade via Google Play"}
+        </button>
+
+        <button
+          onClick={restorePurchases}
+          disabled={loading}
+          className="mt-3 w-full rounded-2xl border border-white/20 py-3 text-sm font-medium text-white disabled:opacity-60"
+        >
+          Aankoop herstellen
         </button>
       </div>
 
