@@ -5,6 +5,7 @@ import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
 import { supabase } from "@/lib/supabaseClient";
 import LogoImage from "@/components/LogoImage";
+import { sendTestUsageNotification } from "@/lib/notifications";
 
 type Subscription = {
   id: string;
@@ -26,6 +27,7 @@ export default function DashboardPage() {
 
   const FREE_LIMIT = 5;
 
+  
   useEffect(() => {
     async function load() {
       try {
@@ -339,7 +341,22 @@ export default function DashboardPage() {
   const remainingFreeSlots = Math.max(FREE_LIMIT - items.length, 0);
 
   return (
-    <main className="mx-auto max-w-md p-4 pb-32">
+  <main className="mx-auto max-w-md p-4 pb-32">
+  DASHBOARD TEST VERSIE
+  
+    <button
+      onClick={async () => {
+        try {
+          await sendTestUsageNotification();
+          alert("Test notificatie gepland voor over 5 seconden.");
+        } catch (err: any) {
+          alert(err?.message ?? "Notificatie mislukt.");
+        }
+      }}
+      className="mb-4 w-full rounded-2xl bg-black px-4 py-3 text-sm font-medium text-white"
+    >
+      🔔 Test notificatie
+    </button>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-gray-500">SubBye</div>
@@ -631,6 +648,8 @@ export default function DashboardPage() {
                   className="h-8 w-8 rounded-md"
                   alt={item.name}
                 />
+
+                
 
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">
