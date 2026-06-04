@@ -5,7 +5,7 @@ import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
 import { supabase } from "@/lib/supabaseClient";
 import LogoImage from "@/components/LogoImage";
-import { sendTestUsageNotification } from "@/lib/notifications";
+import { scheduleSubByeCheckInNotifications } from "@/lib/notifications";
 
 type Subscription = {
   id: string;
@@ -58,6 +58,11 @@ export default function DashboardPage() {
       } catch (err: any) {
         setError(err?.message ?? "Dashboard laden mislukt");
       } finally {
+        try {
+  await scheduleSubByeCheckInNotifications();
+} catch (err) {
+  console.error("Notifications plannen mislukt", err);
+}
         setLoading(false);
       }
     }
