@@ -30,7 +30,7 @@ export async function scheduleSubByeCheckInNotifications() {
         id: 3001,
         title: "👀 Gebruik je al je abonnementen nog?",
         body: "Open SubBye en doe een snelle check.",
-        schedule: { at: new Date(Date.now() + 3 * DAY) },
+        schedule: { at: new Date(Date.now() + 10 * 1000) },
       },
       {
         id: 3002,
