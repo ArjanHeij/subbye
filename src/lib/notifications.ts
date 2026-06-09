@@ -4,13 +4,17 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export async function requestNotificationPermission() {
   const permission = await LocalNotifications.requestPermissions();
+  alert(`Permission status: ${permission.display}`);
   return permission.display === "granted";
 }
 
 export async function scheduleSubByeCheckInNotifications() {
+  alert("Notifications functie gestart");
+
   const granted = await requestNotificationPermission();
 
   if (!granted) {
+    alert("Geen notificatie toestemming");
     throw new Error("Notificatie toestemming niet gegeven.");
   }
 
@@ -23,6 +27,8 @@ export async function scheduleSubByeCheckInNotifications() {
       { id: 3005 },
     ],
   });
+
+  alert("Oude notifications geannuleerd");
 
   await LocalNotifications.schedule({
     notifications: [
@@ -58,4 +64,6 @@ export async function scheduleSubByeCheckInNotifications() {
       },
     ],
   });
+
+  alert("Notifications gepland");
 }
