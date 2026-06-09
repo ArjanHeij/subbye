@@ -1,69 +1,46 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-
-const DAY = 24 * 60 * 60 * 1000;
-
-export async function requestNotificationPermission() {
-  const permission = await LocalNotifications.requestPermissions();
-  alert(`Permission status: ${permission.display}`);
-  return permission.display === "granted";
-}
+import { Capacitor } from "@capacitor/core";
 
 export async function scheduleSubByeCheckInNotifications() {
-  alert("Notifications functie gestart");
+  alert(`Platform: ${Capacitor.getPlatform()}`);
 
-  const granted = await requestNotificationPermission();
+  try {
+    alert("Stap 1: checkPermissions");
 
-  if (!granted) {
-    alert("Geen notificatie toestemming");
-    throw new Error("Notificatie toestemming niet gegeven.");
+    const current = await LocalNotifications.checkPermissions();
+
+    alert(`Huidige permission: ${current.display}`);
+
+    let permission = current;
+
+    if (current.display !== "granted") {
+      alert("Stap 2: requestPermissions");
+
+      permission = await LocalNotifications.requestPermissions();
+
+      alert(`Nieuwe permission: ${permission.display}`);
+    }
+
+    if (permission.display !== "granted") {
+      alert("Geen toestemming voor notificaties.");
+      return;
+    }
+
+    alert("Stap 3: plannen");
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 9001,
+          title: "👀 Gebruik je al je abonnementen nog?",
+          body: "Open SubBye en doe een snelle check.",
+          schedule: { at: new Date(Date.now() + 10 * 1000) },
+        },
+      ],
+    });
+
+    alert("Notification gepland");
+  } catch (err: any) {
+    alert(`Notification error: ${err?.message ?? JSON.stringify(err)}`);
   }
-
-  await LocalNotifications.cancel({
-    notifications: [
-      { id: 3001 },
-      { id: 3002 },
-      { id: 3003 },
-      { id: 3004 },
-      { id: 3005 },
-    ],
-  });
-
-  alert("Oude notifications geannuleerd");
-
-  await LocalNotifications.schedule({
-    notifications: [
-      {
-        id: 3001,
-        title: "👀 Gebruik je al je abonnementen nog?",
-        body: "Open SubBye en doe een snelle check.",
-        schedule: { at: new Date(Date.now() + 10 * 1000) },
-      },
-      {
-        id: 3002,
-        title: "🤔 Welk abonnement mis je het minst?",
-        body: "Misschien zit daar je eerste besparing.",
-        schedule: { at: new Date(Date.now() + 7 * DAY) },
-      },
-      {
-        id: 3003,
-        title: "💸 Nog steeds alles waard?",
-        body: "Check even waar je maandelijks voor betaalt.",
-        schedule: { at: new Date(Date.now() + 14 * DAY) },
-      },
-      {
-        id: 3004,
-        title: "📊 Tijd voor een SubBye check",
-        body: "Een snelle blik kan je geld besparen.",
-        schedule: { at: new Date(Date.now() + 21 * DAY) },
-      },
-      {
-        id: 3005,
-        title: "😅 Zit er iets tussen dat je vergeten bent?",
-        body: "Open SubBye en loop je abonnementen kort na.",
-        schedule: { at: new Date(Date.now() + 30 * DAY) },
-      },
-    ],
-  });
-
-  alert("Notifications gepland");
 }
