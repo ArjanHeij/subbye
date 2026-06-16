@@ -36,18 +36,6 @@ export async function testPushNotifications() {
       console.error("FCM registratie error:", error);
     });
 
-    PushNotifications.addListener("pushNotificationReceived", (notification) => {
-      alert(`Push ontvangen: ${notification.title ?? "Geen titel"}`);
-      console.log("Push ontvangen:", notification);
-    });
-
-    PushNotifications.addListener(
-      "pushNotificationActionPerformed",
-      (notification) => {
-        console.log("Push geopend:", notification);
-      }
-    );
-
     alert("Stap 4: register");
 
     await PushNotifications.register();
