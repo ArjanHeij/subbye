@@ -1,5 +1,14 @@
 package app.subbye.mobile;
 
-import com.getcapacitor.BridgeActivity;
+import android.os.Bundle;
 
-public class MainActivity extends BridgeActivity {}
+import com.getcapacitor.BridgeActivity;
+import com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(LocalNotificationsPlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+}
