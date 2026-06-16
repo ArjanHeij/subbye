@@ -29,46 +29,43 @@ export default function DashboardPage() {
 
   
   useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
+  async function load() {
+    try {
+      setLoading(true);
+      setError("");
 
-        const subs = await listSubscriptions();
-        setItems(subs as Subscription[]);
+      const subs = await listSubscriptions();
+      setItems(subs as Subscription[]);
 
-        const { data: userData } = await supabase.auth.getUser();
-        const user = userData.user;
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
 
-        if (user) {
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("is_premium, plan")
-            .eq("id", user.id)
-            .single();
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("is_premium, plan")
+          .eq("id", user.id)
+          .single();
 
-          if (profileError) {
-            throw profileError;
-          }
-
-          setIsPremium(
-            Boolean(profile?.is_premium) || profile?.plan === "premium"
-          );
+        if (profileError) {
+          throw profileError;
         }
-      } catch (err: any) {
-        setError(err?.message ?? "Dashboard laden mislukt");
-     } finally {
-  try {
-    await testPushNotifications();
-  } catch (err) {
-    console.error("Push test mislukt", err);
+
+        setIsPremium(
+          Boolean(profile?.is_premium) || profile?.plan === "premium"
+        );
+      }
+
+      await testPushNotifications();
+    } catch (err: any) {
+      setError(err?.message ?? "Dashboard laden mislukt");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  setLoading(false);
-}
-
-    load();
-  }, []);
+  load();
+}, []);
 
   useEffect(() => {
     if (items.length > 0 && isPremium) {
