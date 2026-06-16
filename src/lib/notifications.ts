@@ -1,46 +1,59 @@
-import { LocalNotifications } from "@capacitor/local-notifications";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { Capacitor } from "@capacitor/core";
 
-export async function scheduleSubByeCheckInNotifications() {
+export async function testPushNotifications() {
   alert(`Platform: ${Capacitor.getPlatform()}`);
 
   try {
-    alert("Stap 1: checkPermissions");
+    alert("Stap 1: permission check");
 
-    const current = await LocalNotifications.checkPermissions();
+    let permission = await PushNotifications.checkPermissions();
 
-    alert(`Huidige permission: ${current.display}`);
+    alert(`Huidige permission: ${permission.receive}`);
 
-    let permission = current;
+    if (permission.receive !== "granted") {
+      alert("Stap 2: permission request");
 
-    if (current.display !== "granted") {
-      alert("Stap 2: requestPermissions");
+      permission = await PushNotifications.requestPermissions();
 
-      permission = await LocalNotifications.requestPermissions();
-
-      alert(`Nieuwe permission: ${permission.display}`);
+      alert(`Nieuwe permission: ${permission.receive}`);
     }
 
-    if (permission.display !== "granted") {
-      alert("Geen toestemming voor notificaties.");
+    if (permission.receive !== "granted") {
+      alert("Geen toestemming voor push notificaties.");
       return;
     }
 
-    alert("Stap 3: plannen");
+    alert("Stap 3: listeners toevoegen");
 
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: 9001,
-          title: "👀 Gebruik je al je abonnementen nog?",
-          body: "Open SubBye en doe een snelle check.",
-          schedule: { at: new Date(Date.now() + 10 * 1000) },
-        },
-      ],
+    PushNotifications.addListener("registration", (token) => {
+      alert(`FCM token ontvangen: ${token.value.slice(0, 25)}...`);
+      console.log("FCM token:", token.value);
     });
 
-    alert("Notification gepland");
+    PushNotifications.addListener("registrationError", (error) => {
+      alert(`FCM registratie error: ${JSON.stringify(error)}`);
+      console.error("FCM registratie error:", error);
+    });
+
+    PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      alert(`Push ontvangen: ${notification.title ?? "Geen titel"}`);
+      console.log("Push ontvangen:", notification);
+    });
+
+    PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (notification) => {
+        console.log("Push geopend:", notification);
+      }
+    );
+
+    alert("Stap 4: register");
+
+    await PushNotifications.register();
+
+    alert("Registratie gestart. Wacht op FCM token...");
   } catch (err: any) {
-    alert(`Notification error: ${err?.message ?? JSON.stringify(err)}`);
+    alert(`Push error: ${err?.message ?? JSON.stringify(err)}`);
   }
 }

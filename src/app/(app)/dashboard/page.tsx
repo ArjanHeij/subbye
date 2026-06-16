@@ -1,5 +1,6 @@
 "use client";
 
+import { testPushNotifications } from "@/lib/notifications";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
@@ -56,7 +57,13 @@ export default function DashboardPage() {
         }
       } catch (err: any) {
         setError(err?.message ?? "Dashboard laden mislukt");
-      } finally {
+     } finally {
+  try {
+    await testPushNotifications();
+  } catch (err) {
+    console.error("Push test mislukt", err);
+  }
+
   setLoading(false);
 }
 
