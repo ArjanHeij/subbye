@@ -1,6 +1,6 @@
 "use client";
 
-import { testPushNotifications } from "@/lib/notifications";
+import { registerForPushNotifications } from "@/lib/notifications";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
@@ -56,7 +56,7 @@ export default function DashboardPage() {
         );
       }
 
-      await testPushNotifications();
+      await registerForPushNotifications();
     } catch (err: any) {
       setError(err?.message ?? "Dashboard laden mislukt");
     } finally {
