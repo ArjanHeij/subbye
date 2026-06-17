@@ -26,10 +26,37 @@ export async function testPushNotifications() {
 
     alert("Stap 3: listeners toevoegen");
 
-    PushNotifications.addListener("registration", (token) => {
-      alert(`FCM token ontvangen: ${token.value.slice(0, 25)}...`);
-      console.log("FCM token:", token.value);
-    });
+    PushNotifications.addListener("registration", async (token) => {
+  alert(`FCM token ontvangen: ${token.value.slice(0, 25)}...`);
+
+  const { supabase } = await import("@/lib/supabaseClient");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Geen gebruiker gevonden om token op te slaan.");
+    return;
+  }
+
+  const { error } = await supabase.from("push_tokens").upsert(
+    {
+      user_id: user.id,
+      token: token.value,
+    },
+    {
+      onConflict: "user_id,token",
+    }
+  );
+
+  if (error) {
+    alert(`Token opslaan mislukt: ${error.message}`);
+    return;
+  }
+
+  alert("Push token opgeslagen in Supabase ✅");
+});
 
     PushNotifications.addListener("registrationError", (error) => {
       alert(`FCM registratie error: ${JSON.stringify(error)}`);
