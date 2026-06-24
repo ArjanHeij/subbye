@@ -2,8 +2,45 @@ import { NextResponse } from "next/server";
 import { firebaseMessaging } from "@/lib/firebaseAdmin";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function GET() {
+const messages = [
+  {
+    title: "👀 Gebruik je al je abonnementen nog?",
+    body: "Open SubBye en doe een snelle check.",
+  },
+  {
+    title: "💸 Tijd om geld te besparen",
+    body: "Misschien betaal je voor iets dat je niet meer gebruikt.",
+  },
+  {
+    title: "🤔 Welk abonnement mis je het minst?",
+    body: "Dat is vaak de makkelijkste besparing.",
+  },
+  {
+    title: "📊 Snelle abonnementen-check",
+    body: "Bekijk waar je geld elke maand naartoe gaat.",
+  },
+  {
+    title: "😅 Zit er iets tussen dat je vergeten bent?",
+    body: "Open SubBye en loop je abonnementen kort na.",
+  },
+];
+
+function getRandomMessage() {
+  return messages[Math.floor(Math.random() * messages.length)];
+}
+
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const secret = url.searchParams.get("secret");
+
+    if (secret !== process.env.PUSH_API_SECRET) {
+      return NextResponse.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { data: tokens, error } = await supabaseAdmin
       .from("push_tokens")
       .select("token");
@@ -19,14 +56,13 @@ export async function GET() {
       });
     }
 
+    const notification = getRandomMessage();
+
     const results = await Promise.allSettled(
       tokens.map((item) =>
         firebaseMessaging.send({
           token: item.token,
-          notification: {
-            title: "👀 Gebruik je al je abonnementen nog?",
-            body: "Open SubBye en doe een snelle check.",
-          },
+          notification,
           data: {
             type: "subscription_check",
           },
@@ -36,6 +72,7 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      notification,
       total: tokens.length,
       sent: results.filter((r) => r.status === "fulfilled").length,
       failed: results.filter((r) => r.status === "rejected").length,
