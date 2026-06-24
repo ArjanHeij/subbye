@@ -1,30 +1,50 @@
 import { NextResponse } from "next/server";
 import { firebaseMessaging } from "@/lib/firebaseAdmin";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET() {
   try {
-    const token = "eggcrYLPQ8i16rkpLZEfPL:APA91bHEzeL3i8POlfy2UbbL765xGNhYQkvfMpWEn_WzNZBMo-_Xxui_CZuuipZB9-arZu47SFbP-Fo44UCew6CoXvKZ7kGMCVOYbvgVLwH19ZNe2LE8fhc";
+    const { data: tokens, error } = await supabaseAdmin
+      .from("push_tokens")
+      .select("token");
 
-    const messageId = await firebaseMessaging.send({
-      token,
-      notification: {
-        title: "👀 Gebruik je al je abonnementen nog?",
-        body: "Open SubBye en doe een snelle check.",
-      },
-      data: {
-        type: "subscription_check",
-      },
-    });
+    if (error) {
+      throw error;
+    }
+
+    if (!tokens || tokens.length === 0) {
+      return NextResponse.json({
+        ok: false,
+        message: "Geen push tokens gevonden.",
+      });
+    }
+
+    const results = await Promise.allSettled(
+      tokens.map((item) =>
+        firebaseMessaging.send({
+          token: item.token,
+          notification: {
+            title: "👀 Gebruik je al je abonnementen nog?",
+            body: "Open SubBye en doe een snelle check.",
+          },
+          data: {
+            type: "subscription_check",
+          },
+        })
+      )
+    );
 
     return NextResponse.json({
       ok: true,
-      messageId,
+      total: tokens.length,
+      sent: results.filter((r) => r.status === "fulfilled").length,
+      failed: results.filter((r) => r.status === "rejected").length,
     });
   } catch (err: any) {
     return NextResponse.json(
       {
         ok: false,
-        error: err?.message,
+        error: err?.message ?? "Push versturen mislukt.",
       },
       { status: 500 }
     );
