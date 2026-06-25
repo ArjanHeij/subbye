@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/push/send-check?secret=sb_8F4mK2qP9xL7vR1dN6zW3aH5yT8cJ0",
+      "schedule": "0 10 * * 1"
+    }
+  ]
+}
