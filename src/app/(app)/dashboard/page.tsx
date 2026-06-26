@@ -6,6 +6,7 @@ import Link from "next/link";
 import { listSubscriptions } from "@/lib/subscriptionsApi";
 import { supabase } from "@/lib/supabaseClient";
 import LogoImage from "@/components/LogoImage";
+import { calculateSubByeScore } from "@/lib/subbyeScore";
 
 type Subscription = {
   id: string;
@@ -83,6 +84,10 @@ export default function DashboardPage() {
   }, [items]);
 
   const yearlyTotal = monthlyTotal * 12;
+
+  const subByeScore = useMemo(() => {
+  return calculateSubByeScore(items);
+}, [items]);
 
   const chartData = useMemo(() => {
     const values = items.map((item) =>
@@ -448,6 +453,65 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+<div className="mt-4 rounded-3xl bg-gradient-to-r from-emerald-500 to-green-600 p-5 text-white shadow-lg">
+  <div className="flex items-center justify-between">
+    <div>
+      <div className="text-sm font-medium text-white/80">
+        {subByeScore.emoji} SubBye Score
+      </div>
+
+      <div className="mt-2 text-5xl font-bold">
+        {subByeScore.score}
+        <span className="text-2xl font-medium">/100</span>
+      </div>
+
+      <div className="mt-1 text-lg font-semibold">
+        {subByeScore.level}
+      </div>
+
+      <p className="mt-2 text-sm text-white/90">
+        {subByeScore.message}
+      </p>
+    </div>
+
+    <div className="rounded-full bg-white/20 px-4 py-2 text-xl font-bold">
+      {subByeScore.emoji}
+    </div>
+  </div>
+
+  {subByeScore.positives.length > 0 && (
+    <div className="mt-5">
+      <div className="text-xs uppercase tracking-wide text-white/70">
+        👍 Sterke punten
+      </div>
+
+      <div className="mt-2 space-y-1">
+        {subByeScore.positives.map((item, index) => (
+          <div key={index} className="text-sm">
+            ✅ {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {subByeScore.improvements.length > 0 && (
+    <div className="mt-5">
+      <div className="text-xs uppercase tracking-wide text-white/70">
+        💡 Verbeterpunten
+      </div>
+
+      <div className="mt-2 space-y-1">
+        {subByeScore.improvements.map((item, index) => (
+          <div key={index} className="text-sm">
+            • {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
 
       {error && (
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
